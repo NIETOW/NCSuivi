@@ -17,10 +17,22 @@ const firebaseConfig = {
 // Initialisation de Firebase
 const app = firebase.initializeApp(firebaseConfig);
 const db = app.firestore();
-const STOCK_COLLECTION = 'ordinateurs'; // Nom de la collection dans Firestore
+const STOCK_COLLECTION = 'ordinateurs'; 
 
 // Variable globale pour stocker l'ID du PC en cours de vente/suppression
 let currentPcId = null;
+
+// --- Nouvelles fonctions de formatage ---
+
+/**
+ * Formate l'ID numérique (ex: 1) en format lisible (ex: N0001).
+ * @param {number} id - L'ID numérique de l'ordinateur.
+ * @returns {string} L'ID formaté.
+ */
+function formatInventoryId(id) {
+    // Convertit le nombre en chaîne, le padde avec des zéros jusqu'à 4 chiffres, et préfixe 'N'
+    return 'N' + id.toString().padStart(4, '0');
+}
 
 // --- Fonctions de base (MIGRÉES vers Firestore) ---
 
@@ -64,10 +76,13 @@ async function savePc(pcData) {
 }
 
 
+/**
+ * Calcule l'ID numérique du prochain PC (incrémente de 1 à partir du maximum existant).
+ */
 function getNextId(stock) {
     const maxId = stock.reduce((max, pc) => pc.id_ordinateur > max ? pc.id_ordinateur : max, 0);
-    // On garde la logique d'ID à partir de 1000 pour la lisibilité
-    return Math.max(1000, maxId) + 1;
+    // Commence le compteur numérique à 1 si vide, ou incrémente le max ID trouvé.
+    return maxId + 1;
 }
 
 const formatEuro = (value) => value.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
@@ -134,7 +149,7 @@ async function addPc(event) {
     }
 
     const fullStock = await getStock(); // ATTENTE des données
-    const nextId = getNextId(fullStock); 
+    const nextId = getNextId(fullStock); // Récupère le prochain ID numérique (ex: 1, 2, 3...)
 
     const newPc = {
         id_ordinateur: nextId,
@@ -150,7 +165,8 @@ async function addPc(event) {
     document.getElementById('addPcForm').reset();
     renderStock(); 
     updateDashboard(); 
-    document.getElementById('message').textContent = `✅ PC ajouté ! N° Inventaire: ${nextId}`;
+    // Utilisation du nouveau format pour le message
+    document.getElementById('message').textContent = `✅ PC ajouté ! N° Inventaire: ${formatInventoryId(nextId)}`;
 }
 
 
@@ -165,7 +181,8 @@ function openSaleModal(id) {
             const pcDoc = snapshot.docs[0];
             const pc = { ...pcDoc.data(), firestore_id: pcDoc.id };
 
-            document.getElementById('modalPcName').textContent = pc.nom_pc;
+            // Utilisation du nouveau format
+            document.getElementById('modalPcName').textContent = `${pc.nom_pc} (N° ${formatInventoryId(pc.id_ordinateur)})`;
             document.getElementById('modalPcCost').textContent = formatEuro(pc.prix_achat);
             document.getElementById('modalPcEstimatedPrice').textContent = formatEuro(pc.prix_revente_estime);
             
@@ -242,7 +259,8 @@ async function openDeleteModal(id) {
     
     currentPcId = id;
 
-    document.getElementById('modalDeletePcInfo').textContent = `${pc.nom_pc} (N° ${pc.id_ordinateur})`;
+    // Utilisation du nouveau format
+    document.getElementById('modalDeletePcInfo').textContent = `${pc.nom_pc} (N° ${formatInventoryId(pc.id_ordinateur)})`;
 
     document.getElementById('deleteModal').style.display = 'block';
 }
@@ -269,7 +287,7 @@ async function confirmDeletePc() {
     closeDeleteModal();
     renderStock();
     updateDashboard();
-    document.getElementById('message').textContent = `✅ Article N° ${id} supprimé de Firestore.`;
+    document.getElementById('message').textContent = `✅ Article N° ${formatInventoryId(id)} supprimé de Firestore.`;
 }
 
 
@@ -283,11 +301,14 @@ async function filterStock() {
         renderStock(fullStock);
         return;
     }
-
+    
+    // Le filtrage doit vérifier le nom, les caractéristiques ET le format N0001
     const filteredStock = fullStock.filter(pc => {
+        const formattedId = formatInventoryId(pc.id_ordinateur).toLowerCase();
+
         return pc.nom_pc.toLowerCase().includes(searchTerm) || 
                pc.caracteristiques.toLowerCase().includes(searchTerm) ||
-               pc.id_ordinateur.toString().includes(searchTerm);
+               formattedId.includes(searchTerm); // Filtrage sur le format N0001
     });
 
     renderStock(filteredStock);
@@ -335,7 +356,7 @@ async function renderStock(dataToRender = null) {
         
         // Rendu HTML de la ligne
         row.innerHTML = `
-            <td>${pc.id_ordinateur}</td>
+            <td>${formatInventoryId(pc.id_ordinateur)}</td> 
             <td><strong>${pc.nom_pc}</strong></td>
             <td>${formatEuro(prixAchat)}</td>
             <td>${formatEuro(prixReventeEstime)}</td>
@@ -343,7 +364,7 @@ async function renderStock(dataToRender = null) {
             <td class="statut-${statutClass}">${pc.statut}</td>
             <td>
                 ${pc.statut === 'En Stock' ? 
-                    // Appel des nouvelles fonctions modales
+                    // Les fonctions onclick utilisent TOUJOURS l'ID NUMÉRIQUE interne
                     `<button class="action-button btn-vendre" onclick="openSaleModal(${pc.id_ordinateur})">Vendre</button>` : 
                     `Vendu (${pc.date_vente || new Date().toLocaleDateString('fr-FR')}) <button class="action-button btn-vendre" style="font-size: 0.8em; padding: 2px 5px;" onclick="openSaleModal(${pc.id_ordinateur})">Modifier Prix</button>`
                 }
@@ -353,7 +374,7 @@ async function renderStock(dataToRender = null) {
     });
 }
 
-// --- INITIALISATION (Mise à jour pour être asynchrone) ---
+// --- INITIALISATION ---
 document.addEventListener('DOMContentLoaded', () => {
     renderStock();
     updateDashboard();
