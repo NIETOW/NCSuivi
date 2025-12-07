@@ -1,28 +1,83 @@
-const STORAGE_KEY = 'parc_informatique_stock';
+// ==========================================================
+// 1. CONFIGURATION ET INITIALISATION DE FIREBASE
+// ==========================================================
+
+// Configuration Firebase (clés fournies par l'utilisateur)
+const firebaseConfig = {
+    apiKey: "AIzaSyBXHDVlKWjQ4u8OqJZ8YqN1bEciRoSgnM4",
+    authDomain: "ncsuivi.firebaseapp.com",
+    projectId: "ncsuivi",
+    storageBucket: "ncsuivi.firebasestorage.app",
+    messagingSenderId: "29994112172",
+    appId: "1:29994112172:web:e5c9162149957c25f8fb09",
+    measurementId: "G-N5ME2KVF2K" 
+};
+// ==========================================================
+
+// Initialisation de Firebase
+const app = firebase.initializeApp(firebaseConfig);
+const db = app.firestore();
+const STOCK_COLLECTION = 'ordinateurs'; // Nom de la collection dans Firestore
 
 // Variable globale pour stocker l'ID du PC en cours de vente/suppression
 let currentPcId = null;
 
-// --- Fonctions de base (Identiques - et corrigées de la typo précédente !) ---
-function getStock() {
-    const stockJson = localStorage.getItem(STORAGE_KEY); 
-    return stockJson ? JSON.parse(stockJson) : [];
+// --- Fonctions de base (MIGRÉES vers Firestore) ---
+
+/**
+ * Récupère le stock depuis Firestore et trie par ID.
+ * Cette fonction est asynchrone et doit être appelée avec await
+ */
+async function getStock() {
+    try {
+        const snapshot = await db.collection(STOCK_COLLECTION).orderBy('id_ordinateur').get();
+        // Mappe les documents Firestore en objets JavaScript
+        return snapshot.docs.map(doc => ({
+            ...doc.data(),
+            // L'ID du document Firestore est stocké comme 'firestore_id' pour la suppression/mise à jour
+            firestore_id: doc.id 
+        }));
+    } catch (error) {
+        console.error("Erreur lors de la récupération du stock: ", error);
+        return [];
+    }
 }
 
-function saveStock(stock) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stock));
+/**
+ * Sauvegarde un seul PC dans Firestore (pour l'ajout, la vente ou la modification).
+ * @param {object} pcData - L'objet PC à enregistrer (doit inclure firestore_id pour la mise à jour)
+ */
+async function savePc(pcData) {
+    const { firestore_id, ...dataToSave } = pcData;
+    
+    try {
+        if (firestore_id) {
+            // Mise à jour (Vente, Modification)
+            await db.collection(STOCK_COLLECTION).doc(firestore_id).update(dataToSave);
+        } else {
+            // Nouvel ajout
+            await db.collection(STOCK_COLLECTION).add(dataToSave);
+        }
+    } catch (error) {
+        console.error("Erreur lors de la sauvegarde du PC: ", error);
+    }
 }
+
 
 function getNextId(stock) {
     const maxId = stock.reduce((max, pc) => pc.id_ordinateur > max ? pc.id_ordinateur : max, 0);
+    // On garde la logique d'ID à partir de 1000 pour la lisibilité
     return Math.max(1000, maxId) + 1;
 }
 
 const formatEuro = (value) => value.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
 
-// --- MISE À JOUR DU TABLEAU DE BORD (Identique) ---
-function updateDashboard() {
-    const stock = getStock();
+// ==========================================================
+// 2. FONCTIONS DE GESTION (MISES À JOUR pour être asynchrones)
+// ==========================================================
+
+async function updateDashboard() {
+    const stock = await getStock(); // ATTENTE des données Firestore
     
     let soldCount = 0;
     let stockCount = 0;
@@ -31,18 +86,20 @@ function updateDashboard() {
     let totalProfit = 0; 
 
     stock.forEach(pc => {
+        const prixAchat = typeof pc.prix_achat === 'number' ? pc.prix_achat : 0;
+        const prixVenteFinal = typeof pc.prix_vente_final === 'number' ? pc.prix_vente_final : 0;
+
         if (pc.statut === 'En Stock') {
             stockCount++;
         } else if (pc.statut === 'Vendu') {
             soldCount++;
         }
         
-        totalExpenses += (typeof pc.prix_achat === 'number' ? pc.prix_achat : 0);
+        totalExpenses += prixAchat;
 
-        if (pc.statut === 'Vendu' && typeof pc.prix_vente_final === 'number') {
-            totalRevenue += pc.prix_vente_final; 
-            
-            const margeReelle = pc.prix_vente_final - pc.prix_achat;
+        if (pc.statut === 'Vendu') {
+            totalRevenue += prixVenteFinal; 
+            const margeReelle = prixVenteFinal - prixAchat;
             totalProfit += margeReelle;
         }
     });
@@ -63,9 +120,7 @@ function updateDashboard() {
     }
 }
 
-
-// --- AJOUT DE PC (Identique) ---
-function addPc(event) {
+async function addPc(event) {
     event.preventDefault();
     
     const nomPc = document.getElementById('nomPc').value.trim();
@@ -78,7 +133,7 @@ function addPc(event) {
         return;
     }
 
-    const fullStock = getStock();
+    const fullStock = await getStock(); // ATTENTE des données
     const nextId = getNextId(fullStock); 
 
     const newPc = {
@@ -90,42 +145,45 @@ function addPc(event) {
         statut: 'En Stock'
     };
 
-    fullStock.push(newPc);
-    saveStock(fullStock);
+    await savePc(newPc); // SAUVEGARDE dans Firestore
     
     document.getElementById('addPcForm').reset();
-    renderStock(fullStock);
+    renderStock(); 
     updateDashboard(); 
     document.getElementById('message').textContent = `✅ PC ajouté ! N° Inventaire: ${nextId}`;
 }
 
 
-// --- GESTION DE LA MODALE DE VENTE (Identique) ---
+// --- GESTION DE LA MODALE DE VENTE ---
 
 function openSaleModal(id) {
-    const stock = getStock();
-    const pc = stock.find(pc => pc.id_ordinateur === id);
-    
-    if (!pc) return;
-    
     currentPcId = id;
+    
+    // Récupère l'info du PC directement depuis Firestore
+    db.collection(STOCK_COLLECTION).where('id_ordinateur', '==', id).get().then(snapshot => {
+        if (!snapshot.empty) {
+            const pcDoc = snapshot.docs[0];
+            const pc = { ...pcDoc.data(), firestore_id: pcDoc.id };
 
-    document.getElementById('modalPcName').textContent = pc.nom_pc;
-    document.getElementById('modalPcCost').textContent = formatEuro(pc.prix_achat);
-    document.getElementById('modalPcEstimatedPrice').textContent = formatEuro(pc.prix_revente_estime);
-    
-    const finalSalePriceInput = document.getElementById('finalSalePrice');
-    
-    if (pc.statut === 'Vendu' && typeof pc.prix_vente_final === 'number') {
-        finalSalePriceInput.value = pc.prix_vente_final.toFixed(2);
-    } else {
-        finalSalePriceInput.value = pc.prix_revente_estime.toFixed(2);
-    }
-    
-    document.getElementById('modalMessage').textContent = '';
-
-    document.getElementById('saleModal').style.display = 'block';
-    finalSalePriceInput.focus();
+            document.getElementById('modalPcName').textContent = pc.nom_pc;
+            document.getElementById('modalPcCost').textContent = formatEuro(pc.prix_achat);
+            document.getElementById('modalPcEstimatedPrice').textContent = formatEuro(pc.prix_revente_estime);
+            
+            const finalSalePriceInput = document.getElementById('finalSalePrice');
+            
+            if (pc.statut === 'Vendu' && typeof pc.prix_vente_final === 'number') {
+                finalSalePriceInput.value = pc.prix_vente_final.toFixed(2);
+            } else {
+                finalSalePriceInput.value = pc.prix_revente_estime.toFixed(2);
+            }
+            
+            document.getElementById('modalMessage').textContent = '';
+            document.getElementById('saleModal').style.display = 'block';
+            finalSalePriceInput.focus();
+        }
+    }).catch(error => {
+        console.error("Erreur lors de l'ouverture de la modale de vente:", error);
+    });
 }
 
 function closeSaleModal() {
@@ -133,7 +191,7 @@ function closeSaleModal() {
     currentPcId = null;
 }
 
-function processSale() {
+async function processSale() {
     const id = currentPcId;
     if (id === null) return;
 
@@ -146,33 +204,41 @@ function processSale() {
         return;
     }
 
-    let stock = getStock();
-    const pcIndex = stock.findIndex(pc => pc.id_ordinateur === id);
+    // 1. Récupérer le document dans Firestore
+    const snapshot = await db.collection(STOCK_COLLECTION).where('id_ordinateur', '==', id).get();
+    if (snapshot.empty) return;
 
-    if (pcIndex === -1) return;
+    const pcDoc = snapshot.docs[0];
+    const pc = { ...pcDoc.data(), firestore_id: pcDoc.id };
 
-    stock[pcIndex].statut = 'Vendu';
-    stock[pcIndex].prix_vente_final = finalPrice;
-    stock[pcIndex].date_vente = new Date().toLocaleDateString('fr-FR');
+    // 2. Préparer les données de mise à jour
+    const updatedData = {
+        statut: 'Vendu',
+        prix_vente_final: finalPrice,
+        date_vente: new Date().toLocaleDateString('fr-FR')
+    };
     
-    saveStock(stock);
-    renderStock(stock);
+    // 3. Sauvegarder (Mise à jour)
+    await db.collection(STOCK_COLLECTION).doc(pc.firestore_id).update(updatedData);
+
+    // 4. Mettre à jour l'interface
+    modalMessage.textContent = `✅ Vente de ${pc.nom_pc} enregistrée !`;
+    
+    renderStock();
     updateDashboard();
-    
-    modalMessage.textContent = `✅ Vente de ${stock[pcIndex].nom_pc} enregistrée !`;
-    
+
     setTimeout(closeSaleModal, 1000); 
 }
 
 
-// --- NOUVELLE GESTION DE LA MODALE DE SUPPRESSION ---
+// --- GESTION DE LA MODALE DE SUPPRESSION ---
 
-// 1. Ouvre la modale et prépare l'ID
-function openDeleteModal(id) {
-    const stock = getStock();
-    const pc = stock.find(pc => pc.id_ordinateur === id);
-    
-    if (!pc) return;
+async function openDeleteModal(id) {
+    const snapshot = await db.collection(STOCK_COLLECTION).where('id_ordinateur', '==', id).get();
+    if (snapshot.empty) return;
+
+    const pcDoc = snapshot.docs[0];
+    const pc = { ...pcDoc.data(), firestore_id: pcDoc.id };
     
     currentPcId = id;
 
@@ -181,34 +247,37 @@ function openDeleteModal(id) {
     document.getElementById('deleteModal').style.display = 'block';
 }
 
-// 2. Ferme la modale de suppression
 function closeDeleteModal() {
     document.getElementById('deleteModal').style.display = 'none';
     currentPcId = null;
 }
 
-// 3. Exécute la suppression
-function confirmDeletePc() {
+async function confirmDeletePc() {
     const id = currentPcId;
     if (id === null) return;
 
-    let stock = getStock();
-    stock = stock.filter(pc => pc.id_ordinateur !== id);
-    saveStock(stock);
+    // 1. Récupérer l'ID du document Firestore
+    const snapshot = await db.collection(STOCK_COLLECTION).where('id_ordinateur', '==', id).get();
+    if (snapshot.empty) return;
+
+    const firestore_id = snapshot.docs[0].id;
     
-    // Après suppression, on ferme la modale et met à jour l'interface
+    // 2. Suppression dans Firestore
+    await db.collection(STOCK_COLLECTION).doc(firestore_id).delete();
+
+    // 3. Mettre à jour l'interface
     closeDeleteModal();
-    renderStock(stock);
+    renderStock();
     updateDashboard();
-    // On peut ajouter un message de confirmation au tableau de bord si besoin
-    document.getElementById('message').textContent = `✅ Article N° ${id} supprimé.`;
+    document.getElementById('message').textContent = `✅ Article N° ${id} supprimé de Firestore.`;
 }
 
 
-// --- FILTRAGE (Identique) ---
-function filterStock() {
+// --- RENDU DU STOCK ET FILTRAGE ---
+
+async function filterStock() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
-    const fullStock = getStock();
+    const fullStock = await getStock(); // ATTENTE des données
     
     if (!searchTerm) {
         renderStock(fullStock);
@@ -224,8 +293,12 @@ function filterStock() {
     renderStock(filteredStock);
 }
 
-// --- RENDU DU STOCK (Mise à jour des appels aux actions) ---
-function renderStock(dataToRender = getStock()) {
+// Rendu du stock: peut être appelé sans argument pour récupérer les données à jour
+async function renderStock(dataToRender = null) {
+    if (dataToRender === null) {
+        dataToRender = await getStock(); // ATTENTE des données
+    }
+    
     const body = document.getElementById('inventaireBody');
     body.innerHTML = ''; 
 
@@ -245,7 +318,7 @@ function renderStock(dataToRender = getStock()) {
         
         if (pc.statut === 'Vendu' && typeof pc.prix_vente_final === 'number') {
             const margeBrute = pc.prix_vente_final - prixAchat;
-            margeText = formatEuro(margeBrute).replace('€', '');
+            margeText = formatEuro(margeBrute).replace('€', ''); 
             
             if (margeBrute > 0) {
                 margeClass = 'marge-positive';
@@ -260,7 +333,7 @@ function renderStock(dataToRender = getStock()) {
             margeClass = 'marge-estimee';
         }
         
-        // ATTENTION : Le bouton Supprimer appelle maintenant openDeleteModal
+        // Rendu HTML de la ligne
         row.innerHTML = `
             <td>${pc.id_ordinateur}</td>
             <td><strong>${pc.nom_pc}</strong></td>
@@ -270,8 +343,9 @@ function renderStock(dataToRender = getStock()) {
             <td class="statut-${statutClass}">${pc.statut}</td>
             <td>
                 ${pc.statut === 'En Stock' ? 
+                    // Appel des nouvelles fonctions modales
                     `<button class="action-button btn-vendre" onclick="openSaleModal(${pc.id_ordinateur})">Vendre</button>` : 
-                    `Vendu (${pc.date_vente || new Date().toLocaleDateString('fr-FR')}) <button class="action-button btn-modifier-prix" style="font-size: 0.8em; padding: 2px 5px;" onclick="openSaleModal(${pc.id_ordinateur})">Modifier Prix</button>`
+                    `Vendu (${pc.date_vente || new Date().toLocaleDateString('fr-FR')}) <button class="action-button btn-vendre" style="font-size: 0.8em; padding: 2px 5px;" onclick="openSaleModal(${pc.id_ordinateur})">Modifier Prix</button>`
                 }
                 <button class="action-button btn-supprimer" onclick="openDeleteModal(${pc.id_ordinateur})">Supprimer</button>
             </td>
@@ -279,18 +353,18 @@ function renderStock(dataToRender = getStock()) {
     });
 }
 
-// --- INITIALISATION (Ajout des écouteurs de la modale) ---
+// --- INITIALISATION (Mise à jour pour être asynchrone) ---
 document.addEventListener('DOMContentLoaded', () => {
     renderStock();
     updateDashboard();
+    
     document.getElementById('addPcForm').addEventListener('submit', addPc);
     document.getElementById('searchInput').addEventListener('input', filterStock);
 
-    // Gestion commune des modales (vente et suppression)
+    // Écouteurs de modales
     const saleModal = document.getElementById('saleModal');
     const deleteModal = document.getElementById('deleteModal');
 
-    // Fermer les modales en cliquant sur le fond (extérieur)
     window.addEventListener('click', (event) => {
         if (event.target === saleModal) {
             closeSaleModal();
@@ -299,28 +373,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Fermer les modales avec la touche Echap
     window.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
-            if (saleModal.style.display === 'block') {
+            if (saleModal && saleModal.style.display === 'block') {
                 closeSaleModal();
-            } else if (deleteModal.style.display === 'block') {
+            } else if (deleteModal && deleteModal.style.display === 'block') {
                 closeDeleteModal();
             }
         }
     });
 
-    // Écouteurs pour la modale de Vente
     document.getElementById('modalSaveButton').addEventListener('click', processSale);
-
-    // Écouteur pour la modale de Suppression (Bouton de confirmation)
     document.getElementById('modalConfirmDeleteButton').addEventListener('click', confirmDeletePc);
 });
 
 // Exposer les fonctions importantes au niveau global
 window.openSaleModal = openSaleModal;
 window.closeSaleModal = closeSaleModal; 
-window.openDeleteModal = openDeleteModal; // Nouvelle fonction exposée
-window.closeDeleteModal = closeDeleteModal; // Nouvelle fonction exposée
-window.confirmDeletePc = confirmDeletePc; // Nouvelle fonction exposée
+window.openDeleteModal = openDeleteModal;
+window.closeDeleteModal = closeDeleteModal;
+window.confirmDeletePc = confirmDeletePc;
 window.filterStock = filterStock;

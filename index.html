@@ -56,7 +56,7 @@
         <hr>
 
         <h2>Stock Actuel</h2>
-        <input type="text" id="searchInput" placeholder="Rechercher par nom, caractéristiques ou N° Inventaire...">
+        <input type="text" id="searchInput" placeholder="Rechercher par nom, caractéristiques ou N° Inventaire..." onkeyup="filterStock()">
         
         <div class="table-responsive">
             <table>
@@ -65,7 +65,7 @@
                         <th>N° Inventaire</th>
                         <th>Nom du PC</th>
                         <th>Prix Achat</th>
-                        <th>Prix Revente</th>
+                        <th>Prix Revente Estimé</th>
                         <th>Marge Brute</th>
                         <th>Statut</th>
                         <th>Actions</th>
@@ -81,34 +81,37 @@
         <div class="modal-content">
             <span class="close-button" onclick="closeSaleModal()">&times;</span>
             <h2>Enregistrer la Vente</h2>
-            <p>Article : <strong id="modalPcName"></strong></p>
-            <p>Prix d'Achat : <strong id="modalPcCost"></strong></p>
-            <p>Prix de Revente Estimé : <strong id="modalPcEstimatedPrice"></strong></p>
-            
-            <hr>
+            <p><strong>PC:</strong> <span id="modalPcName"></span></p>
+            <p>Prix d'Achat: <span id="modalPcCost"></span></p>
+            <p>Prix Estimé: <span id="modalPcEstimatedPrice"></span></p>
             
             <div class="modal-input-group">
-                <label for="finalSalePrice">Prix de Vente Final (€) :</label>
+                <label for="finalSalePrice">Prix de Vente Final (€):</label>
                 <input type="number" id="finalSalePrice" min="0.01" step="0.01" required>
             </div>
+
+            <p id="modalMessage" style="color: green; font-weight: bold;"></p>
             
-            <button id="modalSaveButton" class="action-button full-width-button btn-vendre">Enregistrer la Vente</button>
-            <p id="modalMessage" class="feedback-message"></p>
+            <button id="modalSaveButton" class="full-width-button">Enregistrer la Vente</button>
+            <button class="full-width-button btn-annuler" onclick="closeSaleModal()">Annuler</button>
         </div>
     </div>
+
     <div id="deleteModal" class="modal">
         <div class="modal-content modal-danger">
             <span class="close-button" onclick="closeDeleteModal()">&times;</span>
             <h2>Confirmation de Suppression</h2>
-            <p>Êtes-vous sûr de vouloir supprimer définitivement cet article ?</p>
-            <p>Article concerné : <strong id="modalDeletePcInfo"></strong></p>
+            <p>Êtes-vous sûr de vouloir supprimer définitivement :</p>
+            <p style="font-weight: bold;" id="modalDeletePcInfo"></p>
+            <p>Cette action est irréversible dans la base de données.</p>
             
-            <hr>
-            
-            <button id="modalConfirmDeleteButton" class="action-button full-width-button btn-supprimer">Oui, Supprimer Définitivement</button>
-            <button class="action-button full-width-button btn-annuler" onclick="closeDeleteModal()">Annuler</button>
+            <button id="modalConfirmDeleteButton" class="full-width-button btn-supprimer">Confirmer la Suppression</button>
+            <button class="full-width-button btn-annuler" onclick="closeDeleteModal()">Annuler</button>
         </div>
     </div>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
