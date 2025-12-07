@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>NCSUIVI - Gestion de Parc Informatique</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    
+    <header>
+        <div class="logo">NCSUIVI</div>
+        <nav>
+            </nav>
+    </header>
+
+    <div class="container">
+        <h1>Inventaire du Parc Informatique</h1>
+        
+        <div class="dashboard-stats">
+            <div class="stat-card">
+                <h3>PCs en Stock</h3>
+                <p id="statsStockCount" class="stat-value">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>PCs Vendus</h3>
+                <p id="statsSoldCount" class="stat-value">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Chiffre d'Affaires (CA)</h3>
+                <p id="statsTotalRevenue" class="stat-value">0,00 €</p>
+            </div>
+            <div class="stat-card">
+                <h3>Dépenses Totales</h3>
+                <p id="statsTotalCost" class="stat-value">0,00 €</p>
+            </div>
+            <div class="stat-card">
+                <h3>Bénéfice Net</h3>
+                <p id="statsTotalProfit" class="stat-value">0,00 €</p>
+            </div>
+        </div>
+        
+        <hr>
+
+        <div class="form-section">
+            <h2>Ajouter un nouvel Ordinateur</h2>
+            <form id="addPcForm" class="input-grid">
+                <input type="text" id="nomPc" placeholder="Nom du PC (Ex: Laptop Pro Z1)" required>
+                <input type="text" id="caracteristiques" placeholder="Caractéristiques (i7, 16GB RAM, 512GB SSD)" required>
+                <input type="number" id="prixAchat" placeholder="Prix d'Achat (€)" min="0.01" step="0.01" required>
+                <input type="number" id="prixRevente" placeholder="Prix Revente Estimé (€)" min="0.01" step="0.01" required>
+                <button type="submit" class="full-width-button">Ajouter au Stock</button>
+            </form>
+            <p id="message" class="feedback-message"></p>
+        </div>
+
+        <hr>
+
+        <h2>Stock Actuel</h2>
+        <input type="text" id="searchInput" placeholder="Rechercher par nom, caractéristiques ou N° Inventaire...">
+        
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>N° Inventaire</th>
+                        <th>Nom du PC</th>
+                        <th>Prix Achat</th>
+                        <th>Prix Revente</th>
+                        <th>Marge Brute</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="inventaireBody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="saleModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeSaleModal()">&times;</span>
+            <h2>Enregistrer la Vente</h2>
+            <p>Article : <strong id="modalPcName"></strong></p>
+            <p>Prix d'Achat : <strong id="modalPcCost"></strong></p>
+            <p>Prix de Revente Estimé : <strong id="modalPcEstimatedPrice"></strong></p>
+            
+            <hr>
+            
+            <div class="modal-input-group">
+                <label for="finalSalePrice">Prix de Vente Final (€) :</label>
+                <input type="number" id="finalSalePrice" min="0.01" step="0.01" required>
+            </div>
+            
+            <button id="modalSaveButton" class="action-button full-width-button btn-vendre">Enregistrer la Vente</button>
+            <p id="modalMessage" class="feedback-message"></p>
+        </div>
+    </div>
+    <div id="deleteModal" class="modal">
+        <div class="modal-content modal-danger">
+            <span class="close-button" onclick="closeDeleteModal()">&times;</span>
+            <h2>Confirmation de Suppression</h2>
+            <p>Êtes-vous sûr de vouloir supprimer définitivement cet article ?</p>
+            <p>Article concerné : <strong id="modalDeletePcInfo"></strong></p>
+            
+            <hr>
+            
+            <button id="modalConfirmDeleteButton" class="action-button full-width-button btn-supprimer">Oui, Supprimer Définitivement</button>
+            <button class="action-button full-width-button btn-annuler" onclick="closeDeleteModal()">Annuler</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
