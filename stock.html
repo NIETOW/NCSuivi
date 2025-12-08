@@ -101,6 +101,17 @@
         </div>
     </div>
 
+    <div id="confirmSaleModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" onclick="closeAllModals()">&times;</span>
+        <h2>Confirmer le Transfert</h2>
+        <p class="modal-subtitle">Voulez-vous vraiment marquer ce PC comme prêt et le **Mettre en Vente** ?</p>
+        <p id="confirmSalePcName" style="font-weight: bold; margin-bottom: 20px;"></p>
+        <button id="confirmTransferBtn" class="full-width-button btn-vendre">Oui, Mettre en Vente</button>
+        <button class="full-width-button btn-annuler" onclick="closeAllModals()" style="margin-top: 10px;">Annuler</button>
+    </div>
+</div>
+
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="script.js"></script>

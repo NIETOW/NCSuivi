@@ -200,12 +200,32 @@ async function renderRepairs() {
 }
 
 async function moveToSale(firestoreId) {
-    if(!confirm("PC réparé et prêt à la vente ?\nIl sera transféré vers la page 'Boutique & Ventes'.")) return;
+    currentPcData = (await db.collection(STOCK_COLLECTION).doc(firestoreId).get()).data();
+    currentPcData.firestoreId = firestoreId; // Ajout de l'ID Firestore
+    
+    if (!currentPcData) return;
+
+    el('confirmSalePcName').textContent = `${currentPcData.nom_pc} (${formatId(currentPcData.id_ordinateur)})`;
+    el('confirmSaleModal').style.display = 'block';
+
+    // IMPORTANT : Associer la fonction de confirmation au bouton de la modale
+    el('confirmTransferBtn').onclick = async () => {
+        await performMoveToSale(firestoreId);
+    };
+}
+
+// Dans la section LOGIQUE STOCK.HTML (ATELIER) & AJOUT
+async function performMoveToSale(firestoreId) {
     try {
         await db.collection(STOCK_COLLECTION).doc(firestoreId).update({ statut: 'En Vente' });
+        closeAllModals(); // Ferme la modale personnalisée
         renderRepairs(); 
         showMessage("✅ Transféré en boutique !");
-    } catch(e) { console.error(e); alert("Erreur"); }
+    } catch(e) { 
+        console.error(e); 
+        closeAllModals(); // Ferme la modale
+        showMessage("Erreur lors du transfert", true);
+    }
 }
 
 // ==========================================================
@@ -408,11 +428,12 @@ window.openSaleModal = openSaleModal;
 window.openEditModal = openEditModal;
 window.openSuiviModal = openSuiviModal;
 window.closeAllModals = closeAllModals;
-window.addPieceToUI = addPieceToUI; // Renommée pour correspondre à addPiece (dans stock.html)
+window.addPieceToUI = addPieceToUI;
 window.removePiece = removePiece;
 window.saveSuiviData = saveSuiviData;
 window.filterStock = filterStock;
 window.filterStockDetail = filterStockDetail;
 window.moveToSale = moveToSale;
-window.togglePieceOrdered = togglePieceOrdered; // NOUVEAU
-window.togglePieceReceived = togglePieceReceived; // NOUVEAU
+window.performMoveToSale = performMoveToSale;
+window.togglePieceOrdered = togglePieceOrdered;
+window.togglePieceReceived = togglePieceReceived; 
