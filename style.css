@@ -28,7 +28,7 @@ nav a.active, nav a:hover { color: white; }
 
 /* FORMS */
 .form-section { background: var(--color-card); border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-/* CORRECTION CRITIQUE: RETRAIT DE PADDING: 80% */
+/* CORRECTION CRITIQUE: RETRAIT DE PADDING INUTILE */
 .input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; } 
 input, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
 .list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
@@ -273,6 +273,11 @@ tr:last-child td { border-bottom: none; }
         width: 100% !important;
         box-sizing: border-box;
     }
+    
+    /* AJOUT SPÉCIFIQUE POP-UP VENTE: S'assurer que les boutons empilés aient de l'espace */
+    .modal-content .full-width-button {
+        margin-top: 10px !important; 
+    }
 
     /* Empilement des inputs de pièces (Nom/Prix/Bouton Ajouter) */
     .input-group-piece {
@@ -280,40 +285,40 @@ tr:last-child td { border-bottom: none; }
         gap: 10px;
     }
 
-    /* CORRECTION AGRESSIVE pour la liste de pièces dans la modale de suivi */
+    /* Correction pour la liste de pièces dans la modale de suivi */
     .piece-item {
-        flex-direction: column; /* Empile l'élément de la pièce */
+        flex-direction: column; 
         align-items: flex-start;
         padding: 8px 10px;
     }
 
     .piece-item > span {
         width: 100%;
-        margin-bottom: 8px; /* Espace le nom des actions */
+        margin-bottom: 8px; 
         font-size: 1.1em;
     }
 
     .piece-actions {
         width: 100%;
         flex-wrap: wrap;
-        justify-content: space-between; /* Distribue le statut, le prix et les boutons */
+        justify-content: space-between; 
     }
 
     .piece-status {
-        min-width: 0; /* Annule la taille fixe */
+        min-width: 0; 
         text-align: left;
-        margin-right: auto; /* Pousse le reste à droite */
+        margin-right: auto; 
     }
 
     .piece-actions strong {
-        order: -1; /* Place le prix avant le statut */
+        order: -1; 
         margin-right: 10px;
         font-size: 1.1em;
     }
 
     .piece-actions button {
         flex-grow: 1;
-        min-width: 45%; /* S'assure que deux boutons tiennent côte à côte */
+        min-width: 45%; 
         margin-top: 5px;
     }
 }
