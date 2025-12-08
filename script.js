@@ -7,7 +7,7 @@ const firebaseConfig = {
     projectId: "ncsuivi",
     storageBucket: "ncsuivi.firebasestorage.app",
     messagingSenderId: "29994111172",
-    appId: "1:29994111172:web:e5c9162149957c25f8fb09",
+    appId: "1:29994111172:web:e5c9161149957c25f8fb09",
     measurementId: "G-N5ME2KVF2K"
 };
 const app = firebase.initializeApp(firebaseConfig);
@@ -89,7 +89,7 @@ async function renderDashboard() {
             stats.stock++;
         }
 
-        // RENDU DE LA TABLE (Ajout des data-label)
+        // RENDU DE LA TABLE (AVEC data-label)
         
         let prixDisplay = isSold ? formatEuro(pc.prix_vente_final) : formatEuro(pc.prix_revente_estime) + ' (Est.)';
         let statutBadge = isSold ? '<span class="badge badge-sold">Vendu</span>' : '<span class="badge badge-stock">En Vente</span>';
@@ -105,7 +105,6 @@ async function renderDashboard() {
         }
 
         const tr = document.createElement('tr');
-        // J'ai revérifié les data-label. Ils sont corrects.
         tr.innerHTML = `
             <td data-label="Réf">${formatId(pc.id_ordinateur)}</td>
             <td data-label="Nom du PC"><strong>${pc.nom_pc}</strong><br><small style="color:#666">${pc.caracteristiques}</small></td>
@@ -182,7 +181,6 @@ async function renderRepairs() {
         const total = (Number(pc.prix_achat)||0) + coutPieces;
 
         const tr = document.createElement('tr');
-        // J'ai revérifié les data-label. Ils sont corrects.
         tr.innerHTML = `
             <td data-label="Réf">${formatId(pc.id_ordinateur)}</td>
             <td data-label="Nom du PC"><strong>${pc.nom_pc}</strong></td>

@@ -133,17 +133,23 @@ tr:last-child td { border-bottom: none; }
     cursor: not-allowed;
 }
 
+
 /* ==========================================================
-   TABLEAU MOBILE RESPONSIVE (MEDIA QUERY)
+   TABLEAU MOBILE RESPONSIVE (MEDIA QUERY) - AJUSTEMENT DÉFINITIF
    ========================================================== */
-@media screen and (max-width: 600px) { 
+@media screen and (max-width: 768px) { /* Ciblage élargi aux petits écrans et tablettes */
     
-    /* Général: Assure que le padding/bordure n'ajoute pas de largeur (résout le décalage) */
+    /* Général: Assure que le padding/bordure n'ajoute pas de largeur */
     table, table tbody, table tr, table td {
         display: block; 
         width: 100%;
         min-width: initial;
-        box-sizing: border-box; /* CECI EST CRUCIAL */
+        box-sizing: border-box; 
+    }
+
+    /* Force les cartes de stats à s'empiler */
+    .dashboard-stats {
+        grid-template-columns: 1fr; 
     }
 
     /* Cache les en-têtes du tableau classique */
@@ -164,13 +170,13 @@ tr:last-child td { border-bottom: none; }
     /* Style chaque cellule (td) pour afficher l'en-tête (l'info) */
     table td {
         text-align: right !important; 
-        padding-left: 50% !important; /* Espace large pour le label */
+        padding-left: 55% !important; /* Espace large pour le label */
         position: relative;
         border: none;
         padding-bottom: 8px;
         padding-top: 8px;
         border-bottom: 1px dashed #eee; 
-        word-wrap: break-word; /* Évite les dépassements de mots longs */
+        word-wrap: break-word; 
     }
     
     table tr td:last-child {
@@ -182,7 +188,7 @@ tr:last-child td { border-bottom: none; }
         content: attr(data-label) ":"; 
         position: absolute;
         left: 0;
-        width: 48%; /* Laisse 2% de marge entre le label et la valeur */
+        width: 50%; /* Occupe 50% de l'espace à gauche */
         padding-left: 15px;
         font-weight: 600;
         text-align: left;
@@ -199,7 +205,7 @@ tr:last-child td { border-bottom: none; }
         border-bottom: 1px solid var(--color-primary); 
         margin-bottom: 5px;
         padding-bottom: 10px;
-        /* Reset le padding-left massif car il n'y a pas de label à afficher */
+        /* Reset le padding-left massif */
         padding-left: 15px !important; 
     }
     
@@ -209,7 +215,7 @@ tr:last-child td { border-bottom: none; }
         width: 0;
     }
 
-    /* Correction des boutons (pour qu'ils s'empilent) */
+    /* Correction des boutons (empilement) */
     .action-buttons-wrapper {
         display: flex; 
         flex-direction: column; 
@@ -221,6 +227,7 @@ tr:last-child td { border-bottom: none; }
     }
     .action-buttons-wrapper button {
         width: 100%; 
+        min-width: 120px;
         margin: 0;
     }
     
