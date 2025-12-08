@@ -105,6 +105,7 @@ async function renderDashboard() {
         }
 
         const tr = document.createElement('tr');
+        // J'ai revérifié les data-label. Ils sont corrects.
         tr.innerHTML = `
             <td data-label="Réf">${formatId(pc.id_ordinateur)}</td>
             <td data-label="Nom du PC"><strong>${pc.nom_pc}</strong><br><small style="color:#666">${pc.caracteristiques}</small></td>
@@ -181,6 +182,7 @@ async function renderRepairs() {
         const total = (Number(pc.prix_achat)||0) + coutPieces;
 
         const tr = document.createElement('tr');
+        // J'ai revérifié les data-label. Ils sont corrects.
         tr.innerHTML = `
             <td data-label="Réf">${formatId(pc.id_ordinateur)}</td>
             <td data-label="Nom du PC"><strong>${pc.nom_pc}</strong></td>

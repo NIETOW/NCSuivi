@@ -136,22 +136,19 @@ tr:last-child td { border-bottom: none; }
 /* ==========================================================
    TABLEAU MOBILE RESPONSIVE (MEDIA QUERY)
    ========================================================== */
-@media screen and (max-width: 768px) {
-    /* Force les cartes à s'empiler */
-    .dashboard-stats {
-        grid-template-columns: 1fr;
+@media screen and (max-width: 600px) { 
+    
+    /* Général: Assure que le padding/bordure n'ajoute pas de largeur (résout le décalage) */
+    table, table tbody, table tr, table td {
+        display: block; 
+        width: 100%;
+        min-width: initial;
+        box-sizing: border-box; /* CECI EST CRUCIAL */
     }
 
     /* Cache les en-têtes du tableau classique */
     table thead {
-        display: none;
-    }
-
-    /* Force le corps du tableau à s'afficher comme un bloc */
-    table, table tbody, table tr, table td {
-        display: block;
-        width: 100%;
-        min-width: initial; /* Annule le min-width de la table */
+        display: none; 
     }
 
     /* Style la ligne comme une carte */
@@ -159,59 +156,75 @@ tr:last-child td { border-bottom: none; }
         margin-bottom: 15px;
         border: 1px solid #ddd;
         border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         padding: 10px;
         background: var(--color-card);
     }
     
-    /* Style chaque cellule (td) pour afficher l'en-tête */
+    /* Style chaque cellule (td) pour afficher l'en-tête (l'info) */
     table td {
-        text-align: right; 
-        padding-left: 50%; /* Laisse de l'espace à gauche pour l'en-tête */
+        text-align: right !important; 
+        padding-left: 50% !important; /* Espace large pour le label */
         position: relative;
         border: none;
         padding-bottom: 8px;
         padding-top: 8px;
+        border-bottom: 1px dashed #eee; 
+        word-wrap: break-word; /* Évite les dépassements de mots longs */
     }
     
-    /* Ajoute l'en-tête comme pseudo-élément */
+    table tr td:last-child {
+        border-bottom: none; 
+    }
+
+    /* Ajoute l'en-tête (l'info) comme pseudo-élément */
     table td::before {
-        content: attr(data-label); /* Utilise l'attribut data-label */
+        content: attr(data-label) ":"; 
         position: absolute;
         left: 0;
-        width: 50%;
+        width: 48%; /* Laisse 2% de marge entre le label et la valeur */
         padding-left: 15px;
         font-weight: 600;
         text-align: left;
         color: var(--color-primary);
+        word-wrap: break-word; 
+        box-sizing: border-box;
     }
 
-    /* Assure que les boutons d'action restent lisibles */
-    .action-buttons-wrapper {
-        flex-direction: column;
-        gap: 5px;
-    }
-    .action-buttons-wrapper button {
-        width: 100%;
-        display: block;
-    }
-    
-    /* Surcharge pour l'affichage du nom du PC qui est la première cellule */
+    /* Style spécifique pour la première cellule (Nom du PC/Réf) */
     table tr td:first-child {
-        text-align: left;
+        text-align: left !important;
         font-size: 1.1em;
         font-weight: bold;
-        border-bottom: 1px solid #eee; /* Séparer le titre du reste */
+        border-bottom: 1px solid var(--color-primary); 
         margin-bottom: 5px;
         padding-bottom: 10px;
-        padding-left: 15px; 
+        /* Reset le padding-left massif car il n'y a pas de label à afficher */
+        padding-left: 15px !important; 
     }
     
     table tr td:first-child::before {
-        content: ""; /* Cache l'étiquette pour la première colonne */
+        content: ""; /* Cache l'étiquette */
+        padding: 0;
+        width: 0;
     }
 
-    /* Correction pour les champs de recherche qui sont trop larges */
+    /* Correction des boutons (pour qu'ils s'empilent) */
+    .action-buttons-wrapper {
+        display: flex; 
+        flex-direction: column; 
+        align-items: flex-end; 
+        gap: 5px;
+        padding-top: 5px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .action-buttons-wrapper button {
+        width: 100%; 
+        margin: 0;
+    }
+    
+    /* Correction pour les champs de recherche */
     .list-header {
         flex-direction: column;
         align-items: flex-start;
@@ -223,8 +236,8 @@ tr:last-child td { border-bottom: none; }
 
     /* Ajustement pour les modales */
     .modal-content {
-        margin: 10vh auto;
-        width: 90%;
+        margin: 5vh auto;
+        width: 95%;
         max-width: none;
     }
 }
