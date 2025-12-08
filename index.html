@@ -42,22 +42,22 @@
             </div>
         </div>
         
-        <hr>
-
         <div class="list-header">
-            <h2>Ventes</h2>
-            <input type="text" id="searchInput" placeholder="Rechercher..." onkeyup="filterStock()">
+            <h2>Inventaire des PC (Vente & Vendu)</h2>
+            <input type="text" id="searchInput" placeholder="Rechercher PC..." onkeyup="filterStock()">
         </div>
-        
+
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
                         <th>Réf</th>
-                        <th>Nom du PC</th>
+                        <th>Nom du PC / Specs</th>
                         <th>Coût Total</th>
-                        <th>Prix Vente</th> <th>Marge</th> <th>Statut</th>
-                        <th style="min-width: 150px;">Actions</th>
+                        <th>Prix Vente</th>
+                        <th>Marge Est. / Réelle</th>
+                        <th>Statut</th>
+                        <th style="min-width: 200px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="inventaireBody">
@@ -69,17 +69,20 @@
     <div id="saleModal" class="modal">
         <div class="modal-content">
             <span class="close-button" onclick="closeAllModals()">&times;</span>
-            <h2>Valider la Vente</h2>
+            <h2>Vendre PC</h2>
             <p id="saleModalPcName" class="modal-subtitle"></p>
-            <div class="modal-input-group"><label>Prix de Vente Final (€)</label><input type="number" id="finalSalePrice" step="0.01"></div>
-            <button id="confirmSaleBtn" class="full-width-button btn-vendre">Confirmer Vente</button>
+            <div class="modal-input-group">
+                <label for="finalSalePrice">Prix de Vente Final (€)</label>
+                <input type="number" id="finalSalePrice" step="0.01" required>
+            </div>
+            <button id="confirmSaleBtn" class="full-width-button btn-vendre" style="margin-top: 15px;">Confirmer la Vente</button>
         </div>
     </div>
 
     <div id="editModal" class="modal">
         <div class="modal-content">
             <span class="close-button" onclick="closeAllModals()">&times;</span>
-            <h2>Modifier l'Article</h2>
+            <h2>Modifier Infos</h2>
             <p id="editModalPcName" class="modal-subtitle"></p>
             <div class="modal-input-group"><label>Nom du PC</label><input type="text" id="editNomPc"></div>
             <div class="modal-input-group"><label>Caractéristiques</label><input type="text" id="editSpecs"></div>
@@ -87,19 +90,24 @@
                 <div class="modal-input-group"><label>Prix Achat (€)</label><input type="number" id="editPrixAchat" step="0.01"></div>
                 <div class="modal-input-group"><label>Est. Revente (€)</label><input type="number" id="editPrixEstime" step="0.01"></div>
             </div>
+            
             <div id="editSaleSection" style="display:none; background: #f9f9f9; padding:10px; border-radius:4px; margin: 10px 0;">
                 <label style="color:var(--color-success)">Prix Vendu (€)</label>
                 <input type="number" id="editPrixVenteFinal" step="0.01">
                 <button id="cancelSaleBtn" class="btn-small btn-annuler" style="margin-top:5px;">Annuler la vente</button>
             </div>
+            
             <button id="saveEditBtn" class="full-width-button btn-primary" style="margin-top: 15px;">Enregistrer</button>
             <hr>
+            
+            <button id="returnToRepairBtn" class="full-width-button btn-warning" style="margin-bottom: 10px;">Retour Atelier</button> 
+            
             <button id="deletePcBtn" class="full-width-button btn-supprimer">Supprimer définitivement</button>
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

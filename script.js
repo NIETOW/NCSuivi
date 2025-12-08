@@ -140,7 +140,7 @@ if (el('addPcForm')) {
     el('addPcForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const stock = await getStock();
-        const maxId = stock.reduce((max, p) => Math.max(max, p.id_ordinateur || 0), 0);
+        const maxId = stock.reduce((max, p => Math.max(max, p.id_ordinateur || 0)), 0);
         
         const newPc = {
             id_ordinateur: maxId + 1,
@@ -170,21 +170,47 @@ async function renderRepairs() {
 
     const repairs = stock.filter(pc => pc.statut === 'En Préparation');
 
+    // NOUVEAU: Calcul des Stats Atelier
+    let stats = {
+        pcCount: repairs.length,
+        piecesCost: 0,
+        piecesOrdered: 0,
+        piecesPending: 0, // Ordered but not received
+        totalInvestment: 0 // PC cost + Pieces cost
+    };
+
     if (repairs.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">Aucun PC en atelier. Utilisez le formulaire ci-dessus.</td></tr>';
+        
+        // Mettre à jour les stats même si la liste est vide
+        if(el('atelierStatsPcCount')) el('atelierStatsPcCount').textContent = 0;
+        if(el('atelierStatsPiecesCost')) el('atelierStatsPiecesCost').textContent = formatEuro(0);
+        if(el('atelierStatsPiecesOrdered')) el('atelierStatsPiecesOrdered').textContent = 0;
+        if(el('atelierStatsPiecesPending')) el('atelierStatsPiecesPending').textContent = 0;
+        if(el('atelierStatsTotalCost')) el('atelierStatsTotalCost').textContent = formatEuro(0);
         return;
     }
 
     repairs.forEach(pc => {
         const pieces = pc.pieces || [];
         const coutPieces = pieces.reduce((acc, p) => acc + (Number(p.prix) || 0), 0);
-        const total = (Number(pc.prix_achat)||0) + coutPieces;
+        const prixAchat = Number(pc.prix_achat) || 0;
+        const total = prixAchat + coutPieces;
+        
+        // Mise à jour des stats Atelier
+        stats.piecesCost += coutPieces;
+        stats.totalInvestment += total;
 
-        // NOUVEAU: Détermination de la classe de couleur (Code Couleur)
+        pieces.forEach(p => {
+            if (p.ordered) stats.piecesOrdered++;
+            if (p.ordered && !p.received) stats.piecesPending++;
+        });
+
+        // Détermination de la classe de couleur (Code Couleur)
         const prixEstime = Number(pc.prix_revente_estime) || 0;
         const totalCostClass = prixEstime > total ? 'marge-positive' : (prixEstime < total ? 'marge-negative' : '');
         
-        // NOUVEAU: Ajout de l'aperçu des pièces (Détail des Coûts des Pièces)
+        // Ajout de l'aperçu des pièces (Détail des Coûts des Pièces)
         const pieceNamesList = pieces.map(p => p.nom).join(', ') || 'Aucune pièce';
 
         const tr = document.createElement('tr');
@@ -202,39 +228,43 @@ async function renderRepairs() {
         `;
         tbody.appendChild(tr);
     });
+
+    // NOUVEAU: Mise à jour du Dashboard Atelier
+    if(el('atelierStatsPcCount')) el('atelierStatsPcCount').textContent = stats.pcCount;
+    if(el('atelierStatsPiecesCost')) el('atelierStatsPiecesCost').textContent = formatEuro(stats.piecesCost);
+    if(el('atelierStatsPiecesOrdered')) el('atelierStatsPiecesOrdered').textContent = stats.piecesOrdered;
+    if(el('atelierStatsPiecesPending')) el('atelierStatsPiecesPending').textContent = stats.piecesPending;
+    if(el('atelierStatsTotalCost')) el('atelierStatsTotalCost').textContent = formatEuro(stats.totalInvestment);
 }
 
-// REMPLACÉ: Ancienne fonction moveToSale (avec confirm natif)
-// NOUVEAU: Gère la vérification des pièces et ouvre la modale personnalisée
+// Fonction pour mettre un PC en vente (vérification des pièces)
 async function moveToSale(firestoreId) {
     currentPcData = (await db.collection(STOCK_COLLECTION).doc(firestoreId).get()).data();
     currentPcData.firestoreId = firestoreId; 
     
     if (!currentPcData) return;
 
-    // NOUVEAU: Vérification des pièces non reçues
+    // Vérification des pièces non reçues
     const piecesNonRecues = (currentPcData.pieces || []).filter(p => p.ordered && !p.received);
     
     if (piecesNonRecues.length > 0) {
         const pieceNames = piecesNonRecues.map(p => p.nom).join(', ');
         alert(`Attention ! Le PC possède encore ${piecesNonRecues.length} pièce(s) commandée(s) mais non reçue(s) : ${pieceNames}. Veuillez d'abord finaliser le suivi.`);
-        return; // Stoppe l'action si des pièces manquent
+        return; 
     }
 
     el('confirmSalePcName').textContent = `${currentPcData.nom_pc} (${formatId(currentPcData.id_ordinateur)})`;
     el('confirmSaleModal').style.display = 'block';
 
-    // Associer la fonction de confirmation au bouton de la modale
     el('confirmTransferBtn').onclick = async () => {
         await performMoveToSale(firestoreId);
     };
 }
 
-// NOUVEAU: Exécute le transfert après la confirmation
 async function performMoveToSale(firestoreId) {
     try {
         await db.collection(STOCK_COLLECTION).doc(firestoreId).update({ statut: 'En Vente' });
-        closeAllModals(); // Ferme la modale personnalisée
+        closeAllModals(); 
         if(el('stockDetailBody')) renderRepairs(); 
         showMessage("✅ Transféré en boutique !");
     } catch(e) { 
@@ -243,6 +273,26 @@ async function performMoveToSale(firestoreId) {
         showMessage("Erreur lors du transfert", true);
     }
 }
+
+// NOUVEAU: Fonction pour remettre un PC à l'atelier
+async function returnToRepair(firestoreId) {
+    if (!confirm("CONFIRMEZ : Voulez-vous vraiment renvoyer ce PC à l'ATELIER pour réparation ?")) return;
+    try {
+        await db.collection(STOCK_COLLECTION).doc(firestoreId).update({
+            statut: 'En Préparation',
+            // Supprimer les champs liés à la vente pour un PC vendu, si nécessaire
+            prix_vente_final: firebase.firestore.FieldValue.delete(), 
+            date_vente: firebase.firestore.FieldValue.delete()
+        });
+        closeAllModals(); 
+        if(el('inventaireBody')) renderDashboard(); 
+        showMessage("✅ PC transféré à l'atelier !");
+    } catch(e) {
+        console.error("Erreur lors du transfert:", e);
+        showMessage("Erreur lors du transfert", true);
+    }
+}
+
 
 // ==========================================================
 // 6. MODALES & SUIVI
@@ -253,7 +303,6 @@ function closeAllModals() {
     currentPcId = null;
 }
 
-// ... openSaleModal, openEditModal (unchanged) ...
 async function openSaleModal(id) {
     currentPcData = await getPcById(id);
     if (!currentPcData) return;
@@ -279,9 +328,19 @@ async function openEditModal(id) {
     el('editSpecs').value = currentPcData.caracteristiques;
     el('editPrixAchat').value = currentPcData.prix_achat;
     el('editPrixEstime').value = currentPcData.prix_revente_estime;
+    
     const isSold = currentPcData.statut === 'Vendu';
+    const isForSale = currentPcData.statut === 'En Vente';
+
+    // Afficher/Masquer la section de vente
     el('editSaleSection').style.display = isSold ? 'block' : 'none';
     if(isSold) el('editPrixVenteFinal').value = currentPcData.prix_vente_final;
+    
+    // NOUVEAU: Montrer le bouton Retour Atelier si PC n'est pas déjà en préparation
+    el('returnToRepairBtn').style.display = (isSold || isForSale) ? 'block' : 'none';
+    el('returnToRepairBtn').onclick = () => returnToRepair(currentPcData.firestoreId);
+
+
     el('editModal').style.display = 'block';
 
     el('saveEditBtn').onclick = async () => {
@@ -323,7 +382,7 @@ async function openSuiviModal(id) {
         ...p,
         ordered: p.ordered !== undefined ? p.ordered : false,
         received: p.received !== undefined ? p.received : false,
-        lien: p.lien !== undefined ? p.lien : '' // NOUVEAU: Initialisation du lien
+        lien: p.lien !== undefined ? p.lien : '' 
     })) : [];
     renderPiecesList();
     el('suiviModal').style.display = 'block';
@@ -375,15 +434,15 @@ function renderPiecesList() {
             const orderedClass = isOrdered ? 'btn-annuler' : 'btn-primary';
             
             const receivedText = isReceived ? 'Annuler Réception' : 'Reçu';
-            const receivedClass = isReceived ? 'btn-warning' : 'btn-vendre'; // Changé en btn-vendre pour le succès
-            const receivedDisabled = !isOrdered && !isReceived; // On ne peut pas recevoir si non commandé et non reçu
+            const receivedClass = isReceived ? 'btn-warning' : 'btn-vendre'; 
+            const receivedDisabled = !isOrdered && !isReceived; 
 
             const statusText = isReceived ? '✅ Reçu' : (isOrdered ? '⏳ Commandé' : '❌ Non Cde');
             
-            // CORRIGÉ ET STYLISÉ: Affichage du lien sous forme de bouton
+            // Affichage du lien sous forme de bouton
             const linkHtml = piece.lien ? 
                 `<a href="${piece.lien}" target="_blank" style="text-decoration: none;">
-                    <button class="btn-small btn-secondary">Lien</button>
+                    <button class="btn-small btn-secondary">👁️ Lien</button>
                 </a>` : '';
 
             const div = document.createElement('div');
@@ -391,7 +450,8 @@ function renderPiecesList() {
             div.innerHTML = `
                 <span>${piece.nom}</span>
                 <div class="piece-actions">
-                    ${linkHtml} <span class="piece-status">${statusText}</span>
+                    ${linkHtml} 
+                    <span class="piece-status">${statusText}</span>
                     <strong>${formatEuro(piece.prix)}</strong>
                     <button class="btn-small ${orderedClass}" onclick="togglePieceOrdered(${index})">${orderedText}</button>
                     <button class="btn-small ${receivedClass}" ${receivedDisabled ? 'disabled' : ''} onclick="togglePieceReceived(${index})">${receivedText}</button>
@@ -407,16 +467,15 @@ function renderPiecesList() {
 function addPieceToUI() {
     const nom = el('newPieceName').value.trim();
     const prix = parseFloat(el('newPiecePrice').value);
-    const lien = el('newPieceLink').value.trim(); // NOUVEAU: Récupération du lien
+    const lien = el('newPieceLink').value.trim(); 
     
     if (!nom || isNaN(prix) || prix <= 0) return alert("Nom ou prix invalide.");
     
-    // Ajout des nouveaux champs de statut et du lien
     tempPiecesList.push({ nom, prix, ordered: false, received: false, lien: lien }); 
     
     el('newPieceName').value = ''; 
     el('newPiecePrice').value = '';
-    el('newPieceLink').value = ''; // NOUVEAU: Reset du champ
+    el('newPieceLink').value = ''; 
     renderPiecesList();
 }
 
@@ -461,6 +520,7 @@ window.saveSuiviData = saveSuiviData;
 window.filterStock = filterStock;
 window.filterStockDetail = filterStockDetail;
 window.moveToSale = moveToSale;
-window.performMoveToSale = performMoveToSale; // NOUVEAU
+window.performMoveToSale = performMoveToSale;
 window.togglePieceOrdered = togglePieceOrdered;
 window.togglePieceReceived = togglePieceReceived;
+window.returnToRepair = returnToRepair; // NOUVEAU

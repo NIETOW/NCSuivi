@@ -63,8 +63,7 @@ button { cursor: pointer; border: none; padding: 10px 15px; border-radius: 4px; 
 .btn-secondary { background: #95a5a6; color: white; }
 .btn-supprimer { background: var(--color-danger); color: white; }
 .btn-annuler { background: #7f8c8d; color: white; }
-.btn-small { margin: 2px; padding: 4px 8px; font-size: 0.8rem; }
-.btn-small:hover { padding: 4px 8px; font-size: 0.8rem; background-color:#666f79; }
+.btn-small { padding: 4px 8px; font-size: 0.8rem; }
 
 .action-buttons-wrapper { display: flex; gap: 5px; }
 

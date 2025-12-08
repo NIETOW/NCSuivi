@@ -1,13 +1,11 @@
 <!DOCTYPE html>
 <html lang="fr">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
     <title>NCSuivi - Atelier</title>
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
     <header>
@@ -21,28 +19,49 @@
     <div class="container">
         <h1>Atelier</h1>
         <p class="subtitle">Ajoutez les nouveaux achats ici, réparez-les, puis mettez-les en vente</p>
-
+        
+        <div class="dashboard-stats" id="atelier-dashboard-stats">
+            <div class="stat-card">
+                <h3>Total PC en Rep.</h3>
+                <p id="atelierStatsPcCount" class="stat-value">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Coût Pièces Tot.</h3>
+                <p id="atelierStatsPiecesCost" class="stat-value">0,00 €</p>
+            </div>
+            <div class="stat-card">
+                <h3>Investissement Total</h3>
+                <p id="atelierStatsTotalCost" class="stat-value">0,00 €</p>
+            </div>
+            <div class="stat-card">
+                <h3>Pièces Commandées</h3>
+                <p id="atelierStatsPiecesOrdered" class="stat-value">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Pièces Non Reçues</h3>
+                <p id="atelierStatsPiecesPending" class="stat-value">0</p>
+            </div>
+        </div>
         <div class="list-header">
-            <h2>Nouvelle Acquisition</h2>
+        <h2>Nouvelle Acquisition</h2>
         </div>
         <div class="form-section">
-            <form id="addPcForm" class="input-grid">
-                <input type="text" id="nomPc" placeholder="Nom du PC (Ex: Dell XPS 13)" required>
-                <input type="text" id="caracteristiques" placeholder="Specs (i7, 16GB, 512GB...)" required>
-                <input type="number" id="prixAchat" placeholder="Prix d'Achat (€)" min="0" step="0.01" required>
-                <input type="number" id="prixRevente" placeholder="Est. Revente (€)" min="0" step="0.01" required>
-                <button type="submit" class="full-width-button">Ajouter au Stock Atelier</button>
+            <form id="addPcForm">
+                <div class="input-grid">
+                    <input type="text" id="nomPc" placeholder="Nom du PC (Ex: Dell XPS 13)" required>
+                    <input type="text" id="caracteristiques" placeholder="Specs (i7, 16GB, 512GB...)" required>
+                    <input type="number" id="prixAchat" placeholder="Prix d'Achat (€)" min="0" step="0.01" required>
+                    <input type="number" id="prixRevente" placeholder="Est. Prix Revente (€)" min="0" step="0.01" required>
+                </div>
+                <button type="submit" class="full-width-button btn-primary" style="margin-top: 15px;">Ajouter à l'Atelier</button>
             </form>
-            <p id="message" class="feedback-message"></p>
         </div>
 
-        <hr>
-
-        <div class="list-header">
-            <h2>En cours de préparation</h2>
-            <input type="text" id="stockSearchInput" placeholder="Rechercher un PC..." onkeyup="filterStockDetail()">
+        <div class="list-header" style="margin-top: 30px;">
+            <h2>Suivi des Réparations</h2>
+            <input type="text" id="stockSearchInput" placeholder="Rechercher PC/Problème..." onkeyup="filterStockDetail()">
         </div>
-
+        
         <div class="table-responsive">
             <table>
                 <thead>
@@ -50,13 +69,13 @@
                         <th>Réf</th>
                         <th>Nom du PC</th>
                         <th>Problèmes / Notes</th>
-                        <th>Coût Pièces / Détail</th>
+                        <th>Coût Pièces / Détail</th> 
                         <th>Coût Total</th>
                         <th style="min-width: 250px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="stockDetailBody">
-                </tbody>
+                    </tbody>
             </table>
         </div>
     </div>
@@ -64,24 +83,31 @@
     <div id="suiviModal" class="modal">
         <div class="modal-content">
             <span class="close-button" onclick="closeAllModals()">&times;</span>
-            <h2>Fiche Atelier : <span id="suiviPcName"></span></h2>
+            <h2>Suivi Atelier</h2>
+            <p id="suiviPcName" class="modal-subtitle"></p>
+            
             <div class="modal-input-group">
-                <label>Notes & Problèmes à résoudre</label>
-                <textarea id="suiviProblemes" rows="3" placeholder="Ex: Écran fissuré, batterie HS..."></textarea>
+                <label>Problèmes / Notes (pour le technicien)</label>
+                <textarea id="suiviProblemes" rows="3" placeholder="Ex: Remplacement SSD et batterie..."></textarea>
             </div>
-            <h3>Pièces Détachées</h3>
-            <div class="input-group-piece">
-                <input type="text" id="newPieceName" placeholder="Nom pièce (ex: SSD)">
-                <input type="number" id="newPiecePrice" placeholder="Prix (€)" step="0.01">
-                <input type="url" id="newPieceLink" placeholder="Lien d'achat (Optionnel)"> <button
-                    class="action-button btn-vendre" onclick="addPieceToUI()">Ajouter</button>
+            
+            <div style="margin-top: 20px;">
+                <h3>Pièces Nécessaires</h3>
+                <div id="piecesListContainer" style="margin-bottom: 15px;">
+                    </div>
+                <p style="text-align: right; font-weight: bold;">Coût Total Pièces: <span id="totalPiecesCost">0,00 €</span></p>
+
+                <hr style="margin: 15px 0;">
+                
+                <div class="input-group-piece">
+                    <input type="text" id="newPieceName" placeholder="Nom pièce (ex: SSD)">
+                    <input type="number" id="newPiecePrice" placeholder="Prix (€)" step="0.01">
+                    <input type="url" id="newPieceLink" placeholder="Lien d'achat (Optionnel)"> 
+                    <button class="action-button btn-vendre" onclick="addPieceToUI()">Ajouter</button>
+                </div>
             </div>
-            <div class="pieces-list" id="piecesListContainer"></div>
-            <div style="text-align: right; margin-top: 10px; font-weight: bold;">
-                Total Pièces: <span id="totalPiecesCost">0.00 €</span>
-            </div>
-            <hr>
-            <button class="full-width-button btn-primary" onclick="saveSuiviData()">Enregistrer la Fiche</button>
+            
+            <button class="full-width-button btn-primary" onclick="saveSuiviData()" style="margin-top: 20px;">Enregistrer le Suivi</button>
         </div>
     </div>
 
@@ -93,16 +119,19 @@
             <div class="modal-input-group"><label>Nom du PC</label><input type="text" id="editNomPc"></div>
             <div class="modal-input-group"><label>Caractéristiques</label><input type="text" id="editSpecs"></div>
             <div class="input-grid">
-                <div class="modal-input-group"><label>Prix Achat (€)</label><input type="number" id="editPrixAchat"
-                        step="0.01"></div>
-                <div class="modal-input-group"><label>Est. Revente (€)</label><input type="number" id="editPrixEstime"
-                        step="0.01"></div>
+                <div class="modal-input-group"><label>Prix Achat (€)</label><input type="number" id="editPrixAchat" step="0.01"></div>
+                <div class="modal-input-group"><label>Est. Revente (€)</label><input type="number" id="editPrixEstime" step="0.01"></div>
             </div>
-            <div id="editSaleSection" style="display:none;"><input type="number" id="editPrixVenteFinal"></div>
-            <button id="saveEditBtn" class="full-width-button btn-primary">Enregistrer</button>
-            <button id="cancelSaleBtn" style="display:none;">x</button>
+            <div id="editSaleSection" style="display:none; background: #f9f9f9; padding:10px; border-radius:4px; margin: 10px 0;">
+                <label style="color:var(--color-success)">Prix Vendu (€)</label>
+                <input type="number" id="editPrixVenteFinal" step="0.01">
+                <button id="cancelSaleBtn" class="btn-small btn-annuler" style="margin-top:5px;">Annuler la vente</button>
+            </div>
+            <button id="saveEditBtn" class="full-width-button btn-primary" style="margin-top: 15px;">Enregistrer</button>
             <hr>
-            <button id="deletePcBtn" class="full-width-button btn-supprimer">Supprimer</button>
+            <button id="returnToRepairBtn" class="full-width-button btn-warning" style="margin-bottom: 10px; display: none;">Retour Atelier</button> 
+            
+            <button id="deletePcBtn" class="full-width-button btn-supprimer">Supprimer définitivement</button>
         </div>
     </div>
 
@@ -110,17 +139,15 @@
         <div class="modal-content">
             <span class="close-button" onclick="closeAllModals()">&times;</span>
             <h2>Confirmer le Transfert</h2>
-            <p class="modal-subtitle">Voulez-vous vraiment marquer ce PC comme prêt et le Mettre en Vente ?</p>
+            <p class="modal-subtitle">Voulez-vous vraiment marquer ce PC comme prêt et le **Mettre en Vente** ?</p>
             <p id="confirmSalePcName" style="font-weight: bold; margin-bottom: 20px;"></p>
             <button id="confirmTransferBtn" class="full-width-button btn-vendre">Oui, Mettre en Vente</button>
-            <button class="full-width-button btn-annuler" onclick="closeAllModals()"
-                style="margin-top: 10px;">Annuler</button>
+            <button class="full-width-button btn-annuler" onclick="closeAllModals()" style="margin-top: 10px;">Annuler</button>
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="script.js"></script>
 </body>
-
 </html>
