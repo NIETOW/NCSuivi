@@ -3,11 +3,9 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>NCSUIVI - Suivi des PCs en Stock</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <title>NCSUIVI - Inventaire et Suivi des PCs</title>
     <link rel="stylesheet" href="style.css">
-
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 </head>
 
 <body>
@@ -24,27 +22,59 @@
         <h1>Suivi et Réparation des PCs en Stock</h1>
 
         <p class="feedback-message" id="detailMessage"></p>
-
+        
+        <input type="text" id="stockSearchInput" placeholder="Rechercher par N° Inventaire ou Nom..." onkeyup="filterStockDetail()">
+        
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
                         <th>N° Inventaire</th>
                         <th>Nom du PC</th>
+                        <th>Statut Actuel</th>
                         <th>Problème(s) Identifié(s)</th>
-                        <th>Pièces Commandées</th>
+                        <th>Coût Pièces</th>
                         <th>Statut Pièces</th>
                         <th>Coût Total Actuel</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="stockDetailBody">
-                </tbody>
+                    </tbody>
             </table>
         </div>
 
     </div>
 
+    <div id="suiviModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeSuiviModal()">&times;</span>
+            <h2>Suivi de Réparation pour <span id="suiviPcName"></span></h2>
+            <p id="suiviPcCarac" style="font-size: 0.9em; color: #6c757d;"></p>
+            
+            <hr>
+            
+            <h3>Problème et Caractéristiques Précises</h3>
+            <textarea id="suiviProblemes" placeholder="Décrivez le problème et notez les caractéristiques internes précises (CPU, RAM, état initial...)"></textarea>
+
+            <h3 style="margin-top: 20px;">Gestion des Pièces (Commandes)</h3>
+            
+            <div class="input-group-piece">
+                <input type="text" id="pieceNom" placeholder="Nom de la pièce (Ex: SSD 512GB)">
+                <input type="number" id="piecePrix" placeholder="Prix (€)" min="0.01" step="0.01">
+                <button class="action-button btn-vendre" onclick="addPiece()">Ajouter</button>
+            </div>
+
+            <div class="pieces-list" id="piecesList">
+                <p style="text-align: center; color: #999;">Ajouter des pièces ci-dessus.</p>
+            </div>
+            
+            <hr>
+            
+            <button class="full-width-button" onclick="saveSuivi()">Enregistrer le Suivi</button>
+            <button class="full-width-button btn-annuler" onclick="closeSuiviModal()">Annuler</button>
+        </div>
+    </div>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="script.js"></script>

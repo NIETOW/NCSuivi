@@ -3,29 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
-    <title>NCSuivi - Gestion de Parc Informatique</title>
+    <title>NCSUIVI - Rapport des Ventes</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     
-   <header>
-    <div class="logo">NCSuivi</div>
-    <nav>
-        <a href="index.html">Rapport</a>
-        <a href="stock.html">Inventaire</a>
-    </nav>
-</header>
+    <header>
+        <div class="logo">NCSUIVI</div>
+        <nav>
+            <a href="index.html">Rapport</a>
+            <a href="stock.html">Inventaire</a>
+        </nav>
+    </header>
 
     <div class="container">
-        <h1>Ventes</h1>
+        <h1>Rapport Financier et Gestion des Ventes</h1>
         
         <div class="dashboard-stats">
             <div class="stat-card">
-                <h3>PC en Stock</h3>
+                <h3>PCs Non Vendus (Stock + En Vente)</h3>
                 <p id="statsStockCount" class="stat-value">0</p>
             </div>
             <div class="stat-card">
-                <h3>PC Vendus</h3>
+                <h3>PCs Vendus</h3>
                 <p id="statsSoldCount" class="stat-value">0</p>
             </div>
             <div class="stat-card">
@@ -33,7 +33,7 @@
                 <p id="statsTotalRevenue" class="stat-value">0,00 €</p>
             </div>
             <div class="stat-card">
-                <h3>Dépenses Totales</h3>
+                <h3>Dépenses Totales (Achats + Pièces)</h3>
                 <p id="statsTotalCost" class="stat-value">0,00 €</p>
             </div>
             <div class="stat-card">
@@ -51,15 +51,15 @@
                 <input type="text" id="caracteristiques" placeholder="Caractéristiques (i7, 16GB RAM, 512GB SSD)" required>
                 <input type="number" id="prixAchat" placeholder="Prix d'Achat (€)" min="0.01" step="0.01" required>
                 <input type="number" id="prixRevente" placeholder="Prix Revente Estimé (€)" min="0.01" step="0.01" required>
-                <button type="submit" class="full-width-button">Ajouter au Stock</button>
+                <button type="submit" class="full-width-button">Ajouter au Stock (à réparer)</button>
             </form>
             <p id="message" class="feedback-message"></p>
         </div>
 
         <hr>
 
-        <h2>Stock Actuel</h2>
-        <input type="text" id="searchInput" placeholder="Rechercher par nom, caractéristiques ou N° Inventaire..." onkeyup="filterStock()">
+        <h2>PCs En Vente et Historique des Ventes</h2>
+        <input type="text" id="searchInput" placeholder="Rechercher par nom ou N° Inventaire..." onkeyup="filterStock()">
         
         <div class="table-responsive">
             <table>
@@ -67,7 +67,7 @@
                     <tr>
                         <th>N° Inventaire</th>
                         <th>Nom du PC</th>
-                        <th>Prix Achat</th>
+                        <th>Coût Total (Achat + Pièces)</th>
                         <th>Prix Revente Estimé</th>
                         <th>Marge Brute</th>
                         <th>Statut</th>
@@ -80,39 +80,44 @@
         </div>
     </div>
 
-    <div id="saleModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button" onclick="closeSaleModal()">&times;</span>
-            <h2>Enregistrer la Vente</h2>
-            <p><strong>PC:</strong> <span id="modalPcName"></span></p>
-            <p>Prix d'Achat: <span id="modalPcCost"></span></p>
-            <p>Prix Estimé: <span id="modalPcEstimatedPrice"></span></p>
-            
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" onclick="closeEditModal()">&times;</span>
+        <h2>Modifier l'Article</h2>
+        
+        <p style="font-weight: bold; margin-bottom: 20px;" id="modalEditPcInfo"></p>
+
+        <div id="statusSection" class="form-section" style="display: none;">
+            <p>Statut actuel : <span id="currentStatus" style="font-weight: bold;"></span></p>
+
             <div class="modal-input-group">
-                <label for="finalSalePrice">Prix de Vente Final (€):</label>
-                <input type="number" id="finalSalePrice" min="0.01" step="0.01" required>
+                <label for="editFinalSalePrice">Prix de Vente Final (€):</label>
+                <input type="number" id="editFinalSalePrice" min="0.01" step="0.01">
             </div>
-
-            <p id="modalMessage" style="color: green; font-weight: bold;"></p>
-            
-            <button id="modalSaveButton" class="full-width-button">Enregistrer la Vente</button>
-            <button class="full-width-button btn-annuler" onclick="closeSaleModal()">Annuler</button>
+            <button id="updateSalePriceButton" class="full-width-button btn-vendre">Mettre à Jour le Prix de Vente</button>
+            <button id="cancelSaleButton" class="full-width-button btn-annuler" style="margin-top: 10px;">Annuler Vente (Remettre en Stock)</button>
         </div>
-    </div>
 
-    <div id="deleteModal" class="modal">
-        <div class="modal-content modal-danger">
-            <span class="close-button" onclick="closeDeleteModal()">&times;</span>
-            <h2>Confirmation de Suppression</h2>
-            <p>Êtes-vous sûr de vouloir supprimer définitivement :</p>
-            <p style="font-weight: bold;" id="modalDeletePcInfo"></p>
-            <p>Cette action est irréversible dans la base de données.</p>
-            
-            <button id="modalConfirmDeleteButton" class="full-width-button btn-supprimer">Confirmer la Suppression</button>
-            <button class="full-width-button btn-annuler" onclick="closeDeleteModal()">Annuler</button>
+        <h3>Coûts et Estimation</h3>
+        <div class="modal-input-group">
+            <label for="editPrixAchat">Prix d'Achat (Coût PC) (€):</label>
+            <input type="number" id="editPrixAchat" min="0.01" step="0.01" required>
         </div>
+        <div class="modal-input-group">
+            <label for="editPrixReventeEstime">Prix Revente Estimé (€):</label>
+            <input type="number" id="editPrixReventeEstime" min="0.01" step="0.01" required>
+        </div>
+        <button id="updateCostButton" class="full-width-button btn-modifier-cout">Mettre à Jour les Coûts/Estimations</button>
+        
+        <hr>
+
+        <h3>Suppression Définitive</h3>
+        <p>Attention : Cette action est irréversible dans la base de données.</p>
+        <button id="confirmDeletePcButton" class="full-width-button btn-supprimer">SUPPRIMER DÉFINITIVEMENT L'ARTICLE</button>
+        
+        <p id="editModalMessage" class="feedback-message" style="display: none;"></p>
     </div>
-    
+</div>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="script.js"></script>
