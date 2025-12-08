@@ -137,7 +137,7 @@ tr:last-child td { border-bottom: none; }
 /* ==========================================================
    TABLEAU MOBILE RESPONSIVE (MEDIA QUERY) - AJUSTEMENT DÉFINITIF
    ========================================================== */
-@media screen and (max-width: 768px) { /* Ciblage élargi aux petits écrans et tablettes */
+@media screen and (max-width: 768px) { 
     
     /* Général: Assure que le padding/bordure n'ajoute pas de largeur */
     table, table tbody, table tr, table td {
@@ -169,7 +169,11 @@ tr:last-child td { border-bottom: none; }
     
     /* Style chaque cellule (td) pour afficher l'en-tête (l'info) */
     table td {
-        text-align: right !important; 
+        /* AJUSTEMENT: Utiliser Flexbox pour aligner la valeur verticalement si elle a plusieurs lignes */
+        display: flex !important; 
+        justify-content: flex-end; /* Aligne la valeur à droite */
+        align-items: center; /* AJUSTEMENT: Centre la valeur verticalement par rapport au label */
+        
         padding-left: 55% !important; /* Espace large pour le label */
         position: relative;
         border: none;
@@ -188,7 +192,7 @@ tr:last-child td { border-bottom: none; }
         content: attr(data-label) ":"; 
         position: absolute;
         left: 0;
-        width: 50%; /* Occupe 50% de l'espace à gauche */
+        width: 50%; 
         padding-left: 15px;
         font-weight: 600;
         text-align: left;
@@ -199,18 +203,19 @@ tr:last-child td { border-bottom: none; }
 
     /* Style spécifique pour la première cellule (Nom du PC/Réf) */
     table tr td:first-child {
+        /* RETOUR À display: block pour le titre principal */
+        display: block !important; 
         text-align: left !important;
         font-size: 1.1em;
         font-weight: bold;
         border-bottom: 1px solid var(--color-primary); 
         margin-bottom: 5px;
         padding-bottom: 10px;
-        /* Reset le padding-left massif */
         padding-left: 15px !important; 
     }
     
     table tr td:first-child::before {
-        content: ""; /* Cache l'étiquette */
+        content: ""; 
         padding: 0;
         width: 0;
     }
@@ -224,6 +229,8 @@ tr:last-child td { border-bottom: none; }
         padding-top: 5px;
         width: 100%;
         box-sizing: border-box;
+        /* AJUSTEMENT: Assure que le conteneur Flex des boutons est bien centré dans l'espace restant */
+        margin-left: auto; 
     }
     .action-buttons-wrapper button {
         width: 100%; 
