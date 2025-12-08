@@ -180,14 +180,19 @@ async function renderRepairs() {
         const coutPieces = pieces.reduce((acc, p) => acc + (Number(p.prix) || 0), 0);
         const total = (Number(pc.prix_achat)||0) + coutPieces;
 
+        // NOUVEAU: Détermination de la classe de couleur (Code Couleur)
+        const prixEstime = Number(pc.prix_revente_estime) || 0;
+        const totalCostClass = prixEstime > total ? 'marge-positive' : (prixEstime < total ? 'marge-negative' : '');
+        
+        // NOUVEAU: Ajout de l'aperçu des pièces (Détail des Coûts des Pièces)
+        const pieceNamesList = pieces.map(p => p.nom).join(', ') || 'Aucune pièce';
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td data-label="Réf">${formatId(pc.id_ordinateur)}</td>
             <td data-label="Nom du PC"><strong>${pc.nom_pc}</strong></td>
             <td data-label="Problèmes / Notes" style="color: #666; font-style: italic;">${pc.problemes || 'R.A.S.'}</td>
-            <td data-label="Coût Pièces">${formatEuro(coutPieces)} <small>(${pieces.length} pcs)</small></td>
-            <td data-label="Coût Total"><strong>${formatEuro(total)}</strong></td>
-            <td data-label="Actions">
+            <td data-label="Coût Pièces">${formatEuro(coutPieces)} <small>(${pieces.length} pcs)</small><br><small style="color: #999;">${pieceNamesList}</small></td> <td data-label="Coût Total" class="${totalCostClass}"><strong>${formatEuro(total)}</strong></td> <td data-label="Actions">
                 <div class="action-buttons-wrapper">
                     <button class="action-button btn-vendre" onclick="moveToSale('${pc.firestoreId}')">Mettre en Vente</button>
                     <button class="action-button btn-modifier-suivi" onclick="openSuiviModal(${pc.id_ordinateur})">🛠️ Pièces</button>
@@ -199,31 +204,42 @@ async function renderRepairs() {
     });
 }
 
+// REMPLACÉ: Ancienne fonction moveToSale (avec confirm natif)
+// NOUVEAU: Gère la vérification des pièces et ouvre la modale personnalisée
 async function moveToSale(firestoreId) {
     currentPcData = (await db.collection(STOCK_COLLECTION).doc(firestoreId).get()).data();
-    currentPcData.firestoreId = firestoreId; // Ajout de l'ID Firestore
+    currentPcData.firestoreId = firestoreId; 
     
     if (!currentPcData) return;
+
+    // NOUVEAU: Vérification des pièces non reçues
+    const piecesNonRecues = (currentPcData.pieces || []).filter(p => p.ordered && !p.received);
+    
+    if (piecesNonRecues.length > 0) {
+        const pieceNames = piecesNonRecues.map(p => p.nom).join(', ');
+        alert(`Attention ! Le PC possède encore ${piecesNonRecues.length} pièce(s) commandée(s) mais non reçue(s) : ${pieceNames}. Veuillez d'abord finaliser le suivi.`);
+        return; // Stoppe l'action si des pièces manquent
+    }
 
     el('confirmSalePcName').textContent = `${currentPcData.nom_pc} (${formatId(currentPcData.id_ordinateur)})`;
     el('confirmSaleModal').style.display = 'block';
 
-    // IMPORTANT : Associer la fonction de confirmation au bouton de la modale
+    // Associer la fonction de confirmation au bouton de la modale
     el('confirmTransferBtn').onclick = async () => {
         await performMoveToSale(firestoreId);
     };
 }
 
-// Dans la section LOGIQUE STOCK.HTML (ATELIER) & AJOUT
+// NOUVEAU: Exécute le transfert après la confirmation
 async function performMoveToSale(firestoreId) {
     try {
         await db.collection(STOCK_COLLECTION).doc(firestoreId).update({ statut: 'En Vente' });
         closeAllModals(); // Ferme la modale personnalisée
-        renderRepairs(); 
+        if(el('stockDetailBody')) renderRepairs(); 
         showMessage("✅ Transféré en boutique !");
     } catch(e) { 
         console.error(e); 
-        closeAllModals(); // Ferme la modale
+        closeAllModals();
         showMessage("Erreur lors du transfert", true);
     }
 }
@@ -306,7 +322,8 @@ async function openSuiviModal(id) {
     tempPiecesList = currentPcData.pieces ? currentPcData.pieces.map(p => ({
         ...p,
         ordered: p.ordered !== undefined ? p.ordered : false,
-        received: p.received !== undefined ? p.received : false
+        received: p.received !== undefined ? p.received : false,
+        lien: p.lien !== undefined ? p.lien : '' // NOUVEAU: Initialisation du lien
     })) : [];
     renderPiecesList();
     el('suiviModal').style.display = 'block';
@@ -363,12 +380,18 @@ function renderPiecesList() {
 
             const statusText = isReceived ? '✅ Reçu' : (isOrdered ? '⏳ Commandé' : '❌ Non Cde');
             
+            // CORRIGÉ ET STYLISÉ: Affichage du lien sous forme de bouton
+            const linkHtml = piece.lien ? 
+                `<a href="${piece.lien}" target="_blank" style="text-decoration: none;">
+                    <button class="btn-small btn-secondary">Lien</button>
+                </a>` : '';
+
             const div = document.createElement('div');
             div.className = 'piece-item';
             div.innerHTML = `
                 <span>${piece.nom}</span>
                 <div class="piece-actions">
-                    <span class="piece-status">${statusText}</span>
+                    ${linkHtml} <span class="piece-status">${statusText}</span>
                     <strong>${formatEuro(piece.prix)}</strong>
                     <button class="btn-small ${orderedClass}" onclick="togglePieceOrdered(${index})">${orderedText}</button>
                     <button class="btn-small ${receivedClass}" ${receivedDisabled ? 'disabled' : ''} onclick="togglePieceReceived(${index})">${receivedText}</button>
@@ -384,12 +407,16 @@ function renderPiecesList() {
 function addPieceToUI() {
     const nom = el('newPieceName').value.trim();
     const prix = parseFloat(el('newPiecePrice').value);
+    const lien = el('newPieceLink').value.trim(); // NOUVEAU: Récupération du lien
+    
     if (!nom || isNaN(prix) || prix <= 0) return alert("Nom ou prix invalide.");
     
-    // Ajout des nouveaux champs de statut
-    tempPiecesList.push({ nom, prix, ordered: false, received: false }); 
+    // Ajout des nouveaux champs de statut et du lien
+    tempPiecesList.push({ nom, prix, ordered: false, received: false, lien: lien }); 
     
-    el('newPieceName').value = ''; el('newPiecePrice').value = '';
+    el('newPieceName').value = ''; 
+    el('newPiecePrice').value = '';
+    el('newPieceLink').value = ''; // NOUVEAU: Reset du champ
     renderPiecesList();
 }
 
@@ -434,6 +461,6 @@ window.saveSuiviData = saveSuiviData;
 window.filterStock = filterStock;
 window.filterStockDetail = filterStockDetail;
 window.moveToSale = moveToSale;
-window.performMoveToSale = performMoveToSale;
+window.performMoveToSale = performMoveToSale; // NOUVEAU
 window.togglePieceOrdered = togglePieceOrdered;
-window.togglePieceReceived = togglePieceReceived; 
+window.togglePieceReceived = togglePieceReceived;

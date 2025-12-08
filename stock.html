@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NCSuivi - Atelier</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
     <header>
@@ -19,9 +21,9 @@
     <div class="container">
         <h1>Atelier</h1>
         <p class="subtitle">Ajoutez les nouveaux achats ici, réparez-les, puis mettez-les en vente</p>
-        
+
         <div class="list-header">
-        <h2>Nouvelle Acquisition</h2>
+            <h2>Nouvelle Acquisition</h2>
         </div>
         <div class="form-section">
             <form id="addPcForm" class="input-grid">
@@ -40,7 +42,7 @@
             <h2>En cours de préparation</h2>
             <input type="text" id="stockSearchInput" placeholder="Rechercher un PC..." onkeyup="filterStockDetail()">
         </div>
-        
+
         <div class="table-responsive">
             <table>
                 <thead>
@@ -48,13 +50,13 @@
                         <th>Réf</th>
                         <th>Nom du PC</th>
                         <th>Problèmes / Notes</th>
-                        <th>Coût Pièces</th>
+                        <th>Coût Pièces / Détail</th>
                         <th>Coût Total</th>
                         <th style="min-width: 250px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="stockDetailBody">
-                    </tbody>
+                </tbody>
             </table>
         </div>
     </div>
@@ -71,7 +73,8 @@
             <div class="input-group-piece">
                 <input type="text" id="newPieceName" placeholder="Nom pièce (ex: SSD)">
                 <input type="number" id="newPiecePrice" placeholder="Prix (€)" step="0.01">
-                <button class="action-button btn-vendre" onclick="addPieceToUI()">Ajouter</button>
+                <input type="url" id="newPieceLink" placeholder="Lien d'achat (Optionnel)"> <button
+                    class="action-button btn-vendre" onclick="addPieceToUI()">Ajouter</button>
             </div>
             <div class="pieces-list" id="piecesListContainer"></div>
             <div style="text-align: right; margin-top: 10px; font-weight: bold;">
@@ -81,7 +84,7 @@
             <button class="full-width-button btn-primary" onclick="saveSuiviData()">Enregistrer la Fiche</button>
         </div>
     </div>
-    
+
     <div id="editModal" class="modal">
         <div class="modal-content">
             <span class="close-button" onclick="closeAllModals()">&times;</span>
@@ -90,8 +93,10 @@
             <div class="modal-input-group"><label>Nom du PC</label><input type="text" id="editNomPc"></div>
             <div class="modal-input-group"><label>Caractéristiques</label><input type="text" id="editSpecs"></div>
             <div class="input-grid">
-                <div class="modal-input-group"><label>Prix Achat (€)</label><input type="number" id="editPrixAchat" step="0.01"></div>
-                <div class="modal-input-group"><label>Est. Revente (€)</label><input type="number" id="editPrixEstime" step="0.01"></div>
+                <div class="modal-input-group"><label>Prix Achat (€)</label><input type="number" id="editPrixAchat"
+                        step="0.01"></div>
+                <div class="modal-input-group"><label>Est. Revente (€)</label><input type="number" id="editPrixEstime"
+                        step="0.01"></div>
             </div>
             <div id="editSaleSection" style="display:none;"><input type="number" id="editPrixVenteFinal"></div>
             <button id="saveEditBtn" class="full-width-button btn-primary">Enregistrer</button>
@@ -102,18 +107,20 @@
     </div>
 
     <div id="confirmSaleModal" class="modal">
-    <div class="modal-content">
-        <span class="close-button" onclick="closeAllModals()">&times;</span>
-        <h2>Confirmer le Transfert</h2>
-        <p class="modal-subtitle">Voulez-vous vraiment marquer ce PC comme prêt et le **Mettre en Vente** ?</p>
-        <p id="confirmSalePcName" style="font-weight: bold; margin-bottom: 20px;"></p>
-        <button id="confirmTransferBtn" class="full-width-button btn-vendre">Oui, Mettre en Vente</button>
-        <button class="full-width-button btn-annuler" onclick="closeAllModals()" style="margin-top: 10px;">Annuler</button>
+        <div class="modal-content">
+            <span class="close-button" onclick="closeAllModals()">&times;</span>
+            <h2>Confirmer le Transfert</h2>
+            <p class="modal-subtitle">Voulez-vous vraiment marquer ce PC comme prêt et le Mettre en Vente ?</p>
+            <p id="confirmSalePcName" style="font-weight: bold; margin-bottom: 20px;"></p>
+            <button id="confirmTransferBtn" class="full-width-button btn-vendre">Oui, Mettre en Vente</button>
+            <button class="full-width-button btn-annuler" onclick="closeAllModals()"
+                style="margin-top: 10px;">Annuler</button>
+        </div>
     </div>
-</div>
 
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="script.js"></script>
 </body>
+
 </html>

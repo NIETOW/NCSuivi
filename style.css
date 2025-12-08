@@ -27,9 +27,27 @@ nav a.active, nav a:hover { color: white; }
 .profit-negative { color: var(--color-danger); }
 
 /* FORMS */
-.form-section { background: var(--color-card); border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-/* CORRECTION CRITIQUE: RETRAIT DE PADDING INUTILE */
-.input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; } 
+.form-section { 
+    background: var(--color-card); 
+    border-radius: 8px; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+/* NOUVEAU STYLE: Plus d'espace pour les inputs dans le formulaire d'ajout (stock.html) */
+.form-section .input-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+    gap: 15px; 
+    padding: 15px; /* Ajout d'un padding pour entourer les champs du formulaire */
+} 
+
+/* Styles pour les champs dans les modales (plus compact) */
+.modal-content .input-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Force 2 colonnes pour les prix dans la modale */
+    gap: 15px;
+}
+
 input, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
 .list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .list-header input { width: 300px; }
@@ -45,7 +63,8 @@ button { cursor: pointer; border: none; padding: 10px 15px; border-radius: 4px; 
 .btn-secondary { background: #95a5a6; color: white; }
 .btn-supprimer { background: var(--color-danger); color: white; }
 .btn-annuler { background: #7f8c8d; color: white; }
-.btn-small { padding: 4px 8px; font-size: 0.8rem; }
+.btn-small { margin: 2px; padding: 4px 8px; font-size: 0.8rem; }
+.btn-small:hover { padding: 4px 8px; font-size: 0.8rem; background-color:#666f79; }
 
 .action-buttons-wrapper { display: flex; gap: 5px; }
 
@@ -136,8 +155,8 @@ tr:last-child td { border-bottom: none; }
 
 
 /* ==========================================================
-   TABLEAU MOBILE RESPONSIVE (MEDIA QUERY) - VERSION FINALE
-   ========================================================== */
+    TABLEAU MOBILE RESPONSIVE (MEDIA QUERY) - VERSION FINALE
+    ========================================================== */
 @media screen and (max-width: 768px) { 
     
     /* Général: Assure que le padding/bordure n'ajoute pas de largeur */
@@ -250,8 +269,8 @@ tr:last-child td { border-bottom: none; }
     }
 
     /* =======================================
-       CORRECTION RESPONSIVE MODALES (POPUPS)
-       ======================================= */
+      CORRECTION RESPONSIVE MODALES (POPUPS)
+      ======================================= */
     .modal-content {
         margin: 5vh auto; 
         width: 95% !important; 
