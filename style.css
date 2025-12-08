@@ -28,7 +28,7 @@ nav a.active, nav a:hover { color: white; }
 
 /* FORMS */
 .form-section { background: var(--color-card); border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-.input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));}
+.input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); padding: 80%;}
 input, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
 .list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .list-header input { width: 300px; }
@@ -254,4 +254,37 @@ tr:last-child td { border-bottom: none; }
         width: 95%;
         max-width: none;
     }
+    /* AJOUT POUR MODALES RESPONSIVES DANS LA MEDIA QUERY */
+
+/* Ajustement de la taille de la modale elle-même */
+.modal-content {
+    margin: 5vh auto; /* AJUSTEMENT: Plus de marge pour ne pas toucher le haut de l'écran */
+    width: 95%; /* Prend 95% de la largeur du viewport */
+    max-width: none; /* Annule la limite max-width de 500px définie dans le style de base */
+    box-sizing: border-box; 
+    padding: 15px; /* Réduit le padding pour plus d'espace de contenu */
+}
+
+/* Force les champs à prendre toute la largeur si le grid est utilisé */
+.input-grid {
+    grid-template-columns: 1fr; /* Force les champs à s'empiler au lieu d'être côte à côte */
+    gap: 0;
+}
+
+/* Assure que tous les champs et boutons restent dans la modale */
+.modal-content input, 
+.modal-content textarea, 
+.modal-content button {
+    width: 100% !important;
+    box-sizing: border-box;
+}
+
+/* Cas spécifique pour les inputs de pièces */
+.input-group-piece {
+    flex-direction: column; /* Empile les champs de nom/prix de pièce et le bouton Ajouter */
+    gap: 10px;
+}
+.input-group-piece input {
+    margin-bottom: 0; /* Supprime la marge résiduelle */
+}
 }
