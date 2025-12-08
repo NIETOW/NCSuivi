@@ -28,8 +28,8 @@ nav a.active, nav a:hover { color: white; }
 
 /* FORMS */
 .form-section { background: var(--color-card); border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-/* CORRECTION CRITIQUE: Suppression de padding: 80%; et ajout d'un gap */
-.input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;} 
+/* CORRECTION CRITIQUE: RETRAIT DE PADDING: 80% */
+.input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; } 
 input, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
 .list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .list-header input { width: 300px; }
@@ -174,7 +174,6 @@ tr:last-child td { border-bottom: none; }
         justify-content: space-between; /* Le label va à gauche, la valeur à droite */
         align-items: center; /* Centre la valeur verticalement */
         
-        /* On remet le padding normal, Flexbox gère la mise en page */
         padding-left: 15px !important; 
         padding-right: 15px !important; 
 
@@ -255,16 +254,16 @@ tr:last-child td { border-bottom: none; }
        ======================================= */
     .modal-content {
         margin: 5vh auto; 
-        width: 95% !important; /* Prend 95% de la largeur du viewport */
-        max-width: none !important; /* Annule la limite du style global */
+        width: 95% !important; 
+        max-width: none !important; 
         box-sizing: border-box; 
-        padding: 15px; /* Réduit l'espace autour du contenu */
+        padding: 15px; 
     }
 
     /* Force les champs à s'empiler dans les modales */
     .input-grid {
         grid-template-columns: 1fr; 
-        gap: 15px; /* Ajout d'un gap pour l'empilement */
+        gap: 15px;
     }
 
     /* Assure que tous les champs et boutons de la modale remplissent l'espace */
@@ -279,5 +278,42 @@ tr:last-child td { border-bottom: none; }
     .input-group-piece {
         flex-direction: column; 
         gap: 10px;
+    }
+
+    /* CORRECTION AGRESSIVE pour la liste de pièces dans la modale de suivi */
+    .piece-item {
+        flex-direction: column; /* Empile l'élément de la pièce */
+        align-items: flex-start;
+        padding: 8px 10px;
+    }
+
+    .piece-item > span {
+        width: 100%;
+        margin-bottom: 8px; /* Espace le nom des actions */
+        font-size: 1.1em;
+    }
+
+    .piece-actions {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: space-between; /* Distribue le statut, le prix et les boutons */
+    }
+
+    .piece-status {
+        min-width: 0; /* Annule la taille fixe */
+        text-align: left;
+        margin-right: auto; /* Pousse le reste à droite */
+    }
+
+    .piece-actions strong {
+        order: -1; /* Place le prix avant le statut */
+        margin-right: 10px;
+        font-size: 1.1em;
+    }
+
+    .piece-actions button {
+        flex-grow: 1;
+        min-width: 45%; /* S'assure que deux boutons tiennent côte à côte */
+        margin-top: 5px;
     }
 }
