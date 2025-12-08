@@ -28,7 +28,8 @@ nav a.active, nav a:hover { color: white; }
 
 /* FORMS */
 .form-section { background: var(--color-card); border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-.input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); padding: 80%;}
+/* CORRECTION CRITIQUE: Suppression de padding: 80%; et ajout d'un gap */
+.input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;} 
 input, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
 .list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .list-header input { width: 300px; }
@@ -135,7 +136,7 @@ tr:last-child td { border-bottom: none; }
 
 
 /* ==========================================================
-   TABLEAU MOBILE RESPONSIVE (MEDIA QUERY) - AJUSTEMENT DÉFINITIF
+   TABLEAU MOBILE RESPONSIVE (MEDIA QUERY) - VERSION FINALE
    ========================================================== */
 @media screen and (max-width: 768px) { 
     
@@ -167,20 +168,23 @@ tr:last-child td { border-bottom: none; }
         background: var(--color-card);
     }
     
-    /* Style chaque cellule (td) pour afficher l'en-tête (l'info) */
+    /* Style chaque cellule (td) : Utilisation de Flexbox pour un alignement stable */
     table td {
-        /* AJUSTEMENT: Utiliser Flexbox pour aligner la valeur verticalement si elle a plusieurs lignes */
         display: flex !important; 
-        justify-content: flex-end; /* Aligne la valeur à droite */
-        align-items: center; /* AJUSTEMENT: Centre la valeur verticalement par rapport au label */
+        justify-content: space-between; /* Le label va à gauche, la valeur à droite */
+        align-items: center; /* Centre la valeur verticalement */
         
-        padding-left: 55% !important; /* Espace large pour le label */
+        /* On remet le padding normal, Flexbox gère la mise en page */
+        padding-left: 15px !important; 
+        padding-right: 15px !important; 
+
         position: relative;
         border: none;
         padding-bottom: 8px;
         padding-top: 8px;
         border-bottom: 1px dashed #eee; 
         word-wrap: break-word; 
+        min-width: 0; /* Assure que le contenu Flex ne déborde pas */
     }
     
     table tr td:last-child {
@@ -190,10 +194,10 @@ tr:last-child td { border-bottom: none; }
     /* Ajoute l'en-tête (l'info) comme pseudo-élément */
     table td::before {
         content: attr(data-label) ":"; 
-        position: absolute;
-        left: 0;
+        position: static; /* IMPORTANT: Traite le label comme un élément Flex normal */
         width: 50%; 
-        padding-left: 15px;
+        flex-shrink: 0; /* Le label ne rétrécit pas */
+        padding-left: 0; 
         font-weight: 600;
         text-align: left;
         color: var(--color-primary);
@@ -203,7 +207,6 @@ tr:last-child td { border-bottom: none; }
 
     /* Style spécifique pour la première cellule (Nom du PC/Réf) */
     table tr td:first-child {
-        /* RETOUR À display: block pour le titre principal */
         display: block !important; 
         text-align: left !important;
         font-size: 1.1em;
@@ -224,12 +227,11 @@ tr:last-child td { border-bottom: none; }
     .action-buttons-wrapper {
         display: flex; 
         flex-direction: column; 
-        align-items: flex-end; 
+        align-items: stretch; /* Étire les boutons */
         gap: 5px;
         padding-top: 5px;
         width: 100%;
         box-sizing: border-box;
-        /* AJUSTEMENT: Assure que le conteneur Flex des boutons est bien centré dans l'espace restant */
         margin-left: auto; 
     }
     .action-buttons-wrapper button {
@@ -248,43 +250,34 @@ tr:last-child td { border-bottom: none; }
         margin-top: 10px;
     }
 
-    /* Ajustement pour les modales */
+    /* =======================================
+       CORRECTION RESPONSIVE MODALES (POPUPS)
+       ======================================= */
     .modal-content {
-        margin: 5vh auto;
-        width: 95%;
-        max-width: none;
+        margin: 5vh auto; 
+        width: 95% !important; /* Prend 95% de la largeur du viewport */
+        max-width: none !important; /* Annule la limite du style global */
+        box-sizing: border-box; 
+        padding: 15px; /* Réduit l'espace autour du contenu */
     }
-    /* AJOUT POUR MODALES RESPONSIVES DANS LA MEDIA QUERY */
 
-/* Ajustement de la taille de la modale elle-même */
-.modal-content {
-    margin: 5vh auto; /* AJUSTEMENT: Plus de marge pour ne pas toucher le haut de l'écran */
-    width: 95%; /* Prend 95% de la largeur du viewport */
-    max-width: none; /* Annule la limite max-width de 500px définie dans le style de base */
-    box-sizing: border-box; 
-    padding: 15px; /* Réduit le padding pour plus d'espace de contenu */
-}
+    /* Force les champs à s'empiler dans les modales */
+    .input-grid {
+        grid-template-columns: 1fr; 
+        gap: 15px; /* Ajout d'un gap pour l'empilement */
+    }
 
-/* Force les champs à prendre toute la largeur si le grid est utilisé */
-.input-grid {
-    grid-template-columns: 1fr; /* Force les champs à s'empiler au lieu d'être côte à côte */
-    gap: 0;
-}
+    /* Assure que tous les champs et boutons de la modale remplissent l'espace */
+    .modal-content input, 
+    .modal-content textarea, 
+    .modal-content button {
+        width: 100% !important;
+        box-sizing: border-box;
+    }
 
-/* Assure que tous les champs et boutons restent dans la modale */
-.modal-content input, 
-.modal-content textarea, 
-.modal-content button {
-    width: 100% !important;
-    box-sizing: border-box;
-}
-
-/* Cas spécifique pour les inputs de pièces */
-.input-group-piece {
-    flex-direction: column; /* Empile les champs de nom/prix de pièce et le bouton Ajouter */
-    gap: 10px;
-}
-.input-group-piece input {
-    margin-bottom: 0; /* Supprime la marge résiduelle */
-}
+    /* Empilement des inputs de pièces (Nom/Prix/Bouton Ajouter) */
+    .input-group-piece {
+        flex-direction: column; 
+        gap: 10px;
+    }
 }
