@@ -89,7 +89,7 @@ async function renderDashboard() {
             stats.stock++;
         }
 
-        // RENDU DE LA TABLE
+        // RENDU DE LA TABLE (Ajout des data-label)
         
         let prixDisplay = isSold ? formatEuro(pc.prix_vente_final) : formatEuro(pc.prix_revente_estime) + ' (Est.)';
         let statutBadge = isSold ? '<span class="badge badge-sold">Vendu</span>' : '<span class="badge badge-stock">En Vente</span>';
@@ -106,13 +106,13 @@ async function renderDashboard() {
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${formatId(pc.id_ordinateur)}</td>
-            <td><strong>${pc.nom_pc}</strong><br><small style="color:#666">${pc.caracteristiques}</small></td>
-            <td>${formatEuro(coutTotal)} <small>(${formatEuro(coutPieces)} pcs)</small></td>
-            <td>${prixDisplay}</td>
-            <td class="${margeClass}">${formatEuro(marge)}</td>
-            <td>${statutBadge}</td>
-            <td><div class="action-buttons-wrapper">${actionsHtml}</div></td>
+            <td data-label="Réf">${formatId(pc.id_ordinateur)}</td>
+            <td data-label="Nom du PC"><strong>${pc.nom_pc}</strong><br><small style="color:#666">${pc.caracteristiques}</small></td>
+            <td data-label="Coût Total">${formatEuro(coutTotal)} <small>(${formatEuro(coutPieces)} pcs)</small></td>
+            <td data-label="Prix Vente">${prixDisplay}</td>
+            <td data-label="Marge" class="${margeClass}">${formatEuro(marge)}</td>
+            <td data-label="Statut">${statutBadge}</td>
+            <td data-label="Actions"><div class="action-buttons-wrapper">${actionsHtml}</div></td>
         `;
         tbody.appendChild(tr);
     });
@@ -182,12 +182,12 @@ async function renderRepairs() {
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${formatId(pc.id_ordinateur)}</td>
-            <td><strong>${pc.nom_pc}</strong></td>
-            <td style="color: #666; font-style: italic;">${pc.problemes || 'R.A.S.'}</td>
-            <td>${formatEuro(coutPieces)} <small>(${pieces.length} pcs)</small></td>
-            <td><strong>${formatEuro(total)}</strong></td>
-            <td>
+            <td data-label="Réf">${formatId(pc.id_ordinateur)}</td>
+            <td data-label="Nom du PC"><strong>${pc.nom_pc}</strong></td>
+            <td data-label="Problèmes / Notes" style="color: #666; font-style: italic;">${pc.problemes || 'R.A.S.'}</td>
+            <td data-label="Coût Pièces">${formatEuro(coutPieces)} <small>(${pieces.length} pcs)</small></td>
+            <td data-label="Coût Total"><strong>${formatEuro(total)}</strong></td>
+            <td data-label="Actions">
                 <div class="action-buttons-wrapper">
                     <button class="action-button btn-vendre" onclick="moveToSale('${pc.firestoreId}')">Mettre en Vente</button>
                     <button class="action-button btn-modifier-suivi" onclick="openSuiviModal(${pc.id_ordinateur})">🛠️ Pièces</button>
@@ -338,7 +338,7 @@ function renderPiecesList() {
             const orderedClass = isOrdered ? 'btn-annuler' : 'btn-primary';
             
             const receivedText = isReceived ? 'Annuler Réception' : 'Reçu';
-            const receivedClass = isReceived ? 'btn-warning' : 'btn-success';
+            const receivedClass = isReceived ? 'btn-warning' : 'btn-vendre'; // Changé en btn-vendre pour le succès
             const receivedDisabled = !isOrdered && !isReceived; // On ne peut pas recevoir si non commandé et non reçu
 
             const statusText = isReceived ? '✅ Reçu' : (isOrdered ? '⏳ Commandé' : '❌ Non Cde');
