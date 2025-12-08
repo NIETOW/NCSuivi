@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>NCSUIVI - Suivi des PCs en Stock</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    
+    <header>
+        <div class="logo">NCSUIVI</div>
+        <nav>
+            <a href="index.html">Rapport</a>
+            <a href="stock.html">Inventaire</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <h1>Suivi et Réparation des PCs en Stock</h1>
+        
+        <p class="feedback-message" id="detailMessage"></p>
+        
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>N° Inventaire</th>
+                        <th>Nom du PC</th>
+                        <th>Problème(s) Identifié(s)</th>
+                        <th>Pièces Commandées</th>
+                        <th>Statut Pièces</th>
+                        <th>Coût Total Actuel</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="stockDetailBody">
+                </tbody>
+            </table>
+        </div>
+        
+        </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="script.js"></script></body>
+</html>

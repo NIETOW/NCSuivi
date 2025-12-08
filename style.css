@@ -269,3 +269,74 @@ table td:nth-child(5) {
     padding: 10px;
     box-sizing: border-box;
 }
+
+@media(max-width: 768px){
+
+    /* conteneur global */
+    .container{
+        width:100%;
+        padding:10px;
+        margin:0;
+    }
+
+    /* dashboard */
+    .dashboard-stats{
+        display:grid;
+        grid-template-columns: 1fr 1fr;
+        gap:10px;
+    }
+
+    /* formulaire */
+    .input-grid{
+        display:flex;
+        flex-direction:column;
+    }
+
+    .input-grid input,
+    select{
+        width:100% !important;
+    }
+
+    /* boutons */
+    button,
+    .full-width-button{
+        width:100% !important;
+        margin-bottom:8px;
+    }
+
+    /* table */
+    table{
+        min-width:650px;
+        font-size:14px;
+    }
+
+    .table-container{
+        overflow-x:auto;
+    }
+
+    /* actions */
+    .action-button{
+        width:100%;
+        display:block;
+        margin-bottom:5px;
+    }
+
+    /* modal */
+    .modal-content{
+        width:95% !important;
+        max-width:none;
+        margin-top:25%;
+    }
+
+    /* header */
+    header{
+        flex-direction:column;
+        text-align:center;
+        padding:10px;
+    }
+
+    header nav{
+        flex-direction:column;
+        width:100%;
+    }
+}
