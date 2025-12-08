@@ -1,5 +1,5 @@
 // ==========================================================
-// 1. CONFIGURATION ET INITIALISATION DE FIREBASE
+// 1. CONFIGURATION FIREBASE
 // ==========================================================
 const firebaseConfig = {
     apiKey: "AIzaSyBXHDVlKWjQ4u8OqJZ8YqN1bEciRoSgnM4",
@@ -14,468 +14,405 @@ const app = firebase.initializeApp(firebaseConfig);
 const db = app.firestore();
 const STOCK_COLLECTION = 'ordinateurs';
 
-let currentPcId = null;
-let currentPcFirestoreId = null; // Ajout pour stocker l'ID Firestore
+// ==========================================================
+// 2. ETAT GLOBAL
+// ==========================================================
+let currentPcId = null; 
+let currentPcData = null; 
+let tempPiecesList = []; 
 
-// --- Cache et utilitaires ---
-let _stockCache = { data: null, ts: 0 };
-const CACHE_TTL = 5000; // ms
-let isProcessing = false;
+const formatEuro = (val) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(val || 0);
+const formatId = (id) => 'N' + id.toString().padStart(4, '0');
+const el = (id) => document.getElementById(id);
 
-function safeGetEl(id) {
-    return document.getElementById(id);
-}
-
-function showMessage(text, timeout = 3500) {
-    const el = safeGetEl('message');
-    if (!el) return;
-    el.textContent = text;
-    if (timeout) setTimeout(() => { if (el.textContent === text) el.textContent = ''; }, timeout);
-}
-
-function debounce(fn, wait) {
-    let t = null;
-    return (...args) => {
-        clearTimeout(t);
-        t = setTimeout(() => fn(...args), wait);
-    };
-}
-
-// --- FORMATS UTILES ---
-function formatInventoryId(id) {
-    return 'N' + id.toString().padStart(4, '0');
-}
-
-const formatEuro = (value) => value.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
-
-function formatFirestoreDate(timestamp) {
-    if (!timestamp || !timestamp.seconds) return 'N/A';
-    return new Date(timestamp.seconds * 1000).toLocaleDateString('fr-FR');
+function showMessage(msg, isError = false) {
+    const box = el('message') || el('detailMessage');
+    if (box) {
+        box.textContent = msg;
+        box.style.color = isError ? 'var(--color-danger)' : 'var(--color-primary)';
+        setTimeout(() => box.textContent = '', 3500);
+    }
 }
 
 // ==========================================================
-// 2. FONCTIONS FIRESTORE
+// 3. FIRESTORE
 // ==========================================================
 async function getStock() {
     try {
-        const now = Date.now();
-        if (_stockCache.data && (now - _stockCache.ts) < CACHE_TTL) {
-            return _stockCache.data;
-        }
-        const snapshot = await db.collection(STOCK_COLLECTION).orderBy('id_ordinateur').get();
-        const data = snapshot.docs.map(doc => ({ ...doc.data(), firestore_id: doc.id }));
-        _stockCache = { data, ts: Date.now() };
-        return data;
+        const snapshot = await db.collection(STOCK_COLLECTION).orderBy('id_ordinateur', 'desc').get();
+        return snapshot.docs.map(doc => ({ firestoreId: doc.id, ...doc.data() }));
     } catch (err) {
-        console.error("Erreur récupération stock:", err);
-        showMessage("Erreur récupération stock (voir console)");
+        console.error("Erreur lecture:", err);
         return [];
     }
 }
 
-async function savePc(pcData) {
-    const { firestore_id, ...dataToSave } = pcData;
-    if (dataToSave.prix_achat !== undefined) dataToSave.prix_achat = Number(dataToToSave.prix_achat) || 0;
-    if (dataToSave.prix_revente_estime !== undefined) dataToSave.prix_revente_estime = Number(dataToSave.prix_revente_estime) || 0;
-    if (dataToSave.prix_vente_final !== undefined) dataToSave.prix_vente_final = Number(dataToSave.prix_vente_final) || null;
-
-    try {
-        if (firestore_id) {
-            const updateData = { ...dataToSave };
-            // Utiliser la fonction de suppression de champ pour les valeurs 'null'
-            if (updateData.prix_vente_final === null) {
-                updateData.prix_vente_final = firebase.firestore.FieldValue.delete();
-            }
-             if (updateData.date_vente === null) {
-                updateData.date_vente = firebase.firestore.FieldValue.delete();
-            }
-            // S'assurer que le prix d'achat et l'estimation sont bien des nombres
-            if (updateData.prix_achat !== undefined && typeof updateData.prix_achat === 'string') {
-                updateData.prix_achat = parseFloat(updateData.prix_achat);
-            }
-             if (updateData.prix_revente_estime !== undefined && typeof updateData.prix_revente_estime === 'string') {
-                updateData.prix_revente_estime = parseFloat(updateData.prix_revente_estime);
-            }
-
-            await db.collection(STOCK_COLLECTION).doc(firestore_id).update(updateData);
-            _stockCache.ts = 0;
-            return firestore_id;
-        } else {
-            const ref = await db.collection(STOCK_COLLECTION).add(dataToSave);
-            _stockCache.ts = 0;
-            return ref.id;
-        }
-    } catch (err) {
-        console.error("Erreur sauvegarde PC:", err);
-        showMessage("Erreur lors de la sauvegarde (voir console)");
-        throw err;
-    }
-}
-
-function getNextId(stock) {
-    const maxId = stock.reduce((max, pc) => pc.id_ordinateur > max ? pc.id_ordinateur : max, 0);
-    return maxId + 1;
+async function getPcById(id) {
+    const snapshot = await db.collection(STOCK_COLLECTION).where('id_ordinateur', '==', id).get();
+    if (snapshot.empty) return null;
+    return { firestoreId: snapshot.docs[0].id, ...snapshot.docs[0].data() };
 }
 
 // ==========================================================
-// 3. DASHBOARD ET RENDU
+// 4. LOGIQUE INDEX.HTML (RAPPORTS & VENTES)
 // ==========================================================
-async function updateDashboard() {
+async function renderDashboard() {
+    if (!el('inventaireBody')) return;
+    
     const stock = await getStock();
-    let soldCount = 0, stockCount = 0, totalExpenses = 0, totalRevenue = 0, totalProfit = 0;
+    const tbody = el('inventaireBody');
+    tbody.innerHTML = '';
 
-    stock.forEach(pc => {
+    let stats = { stock: 0, sold: 0, ca: 0, depenses: 0, benef: 0 };
+    const itemsToDisplay = stock.filter(pc => pc.statut !== 'En Préparation');
+
+    itemsToDisplay.forEach(pc => {
+        // Calculs de base
         const prixAchat = Number(pc.prix_achat) || 0;
-        const prixVenteFinal = Number(pc.prix_vente_final) || 0;
+        const coutPieces = (pc.pieces || []).reduce((sum, p) => sum + (Number(p.prix) || 0), 0);
+        const coutTotal = prixAchat + coutPieces;
+        const isSold = pc.statut === 'Vendu';
+        
+        // Détermination du prix de revente et de la marge pour l'affichage
+        const prixRevente = isSold ? (Number(pc.prix_vente_final) || 0) : (Number(pc.prix_revente_estime) || 0);
+        const marge = prixRevente - coutTotal;
+        const margeClass = marge > 0 ? 'marge-positive' : (marge < 0 ? 'marge-negative' : '');
 
-        if (pc.statut === 'En Stock') stockCount++;
-        else if (pc.statut === 'Vendu') soldCount++;
+        // Mise à jour des Stats
+        stats.depenses += coutTotal; 
 
-        totalExpenses += prixAchat;
-        if (pc.statut === 'Vendu') {
-            totalRevenue += prixVenteFinal;
-            totalProfit += prixVenteFinal - prixAchat;
+        if (isSold) {
+            stats.sold++;
+            stats.ca += prixRevente;
+            stats.benef += marge;
+        } else { // Statut "En Vente"
+            stats.stock++;
         }
+
+        // RENDU DE LA TABLE
+        
+        let prixDisplay = isSold ? formatEuro(pc.prix_vente_final) : formatEuro(pc.prix_revente_estime) + ' (Est.)';
+        let statutBadge = isSold ? '<span class="badge badge-sold">Vendu</span>' : '<span class="badge badge-stock">En Vente</span>';
+        
+        let actionsHtml = '';
+        if (!isSold) {
+            actionsHtml = `
+                <button class="action-button btn-vendre" onclick="openSaleModal(${pc.id_ordinateur})">Vendre</button>
+                <button class="action-button btn-modifier-suivi" onclick="openEditModal(${pc.id_ordinateur})">Modifier</button>
+            `;
+        } else {
+            actionsHtml = `<button class="action-button btn-secondary" onclick="openEditModal(${pc.id_ordinateur})">Détails</button>`;
+        }
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${formatId(pc.id_ordinateur)}</td>
+            <td><strong>${pc.nom_pc}</strong><br><small style="color:#666">${pc.caracteristiques}</small></td>
+            <td>${formatEuro(coutTotal)} <small>(${formatEuro(coutPieces)} pcs)</small></td>
+            <td>${prixDisplay}</td>
+            <td class="${margeClass}">${formatEuro(marge)}</td>
+            <td>${statutBadge}</td>
+            <td><div class="action-buttons-wrapper">${actionsHtml}</div></td>
+        `;
+        tbody.appendChild(tr);
     });
 
-    document.getElementById('statsStockCount').textContent = stockCount;
-    document.getElementById('statsSoldCount').textContent = soldCount;
-    document.getElementById('statsTotalCost').textContent = formatEuro(totalExpenses);
-    document.getElementById('statsTotalRevenue').textContent = formatEuro(totalRevenue);
+    // Mise à jour des Stats DOM
+    el('statsStockCount').textContent = stats.stock;
+    el('statsSoldCount').textContent = stats.sold;
+    el('statsTotalRevenue').textContent = formatEuro(stats.ca);
+    el('statsTotalCost').textContent = formatEuro(stats.depenses);
+    el('statsTotalProfit').textContent = formatEuro(stats.benef);
+    el('statsTotalProfit').className = 'stat-value ' + (stats.benef >= 0 ? 'profit-positive' : 'profit-negative');
 
-    const profitEl = document.getElementById('statsTotalProfit');
-    profitEl.textContent = formatEuro(totalProfit);
-    profitEl.classList.remove('profit-positive', 'profit-negative');
-    if (totalProfit > 0) profitEl.classList.add('profit-positive');
-    else if (totalProfit < 0) profitEl.classList.add('profit-negative');
-}
-
-// ==========================================================
-// 4. AJOUT D'UN PC
-// ==========================================================
-async function addPc(event) {
-    event.preventDefault();
-    const nomPc = document.getElementById('nomPc').value.trim();
-    const caracteristiques = document.getElementById('caracteristiques').value.trim();
-    const prixAchat = parseFloat(document.getElementById('prixAchat').value);
-    const prixRevente = parseFloat(document.getElementById('prixRevente').value);
-
-    if (!nomPc || !caracteristiques || isNaN(prixAchat) || isNaN(prixRevente) || prixAchat <= 0 || prixRevente <= 0) {
-        document.getElementById('message').textContent = "❌ Veuillez remplir tous les champs correctement.";
-        return;
+    // Message si la table est vide
+    if (itemsToDisplay.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">Aucun PC prêt à la vente ou vendu.</td></tr>';
     }
-
-    const fullStock = await getStock();
-    const nextId = getNextId(fullStock);
-
-    const newPc = {
-        id_ordinateur: nextId,
-        nom_pc: nomPc,
-        caracteristiques,
-        prix_achat: prixAchat,
-        prix_revente_estime: prixRevente,
-        statut: 'En Stock'
-    };
-
-    await savePc(newPc);
-    document.getElementById('addPcForm').reset();
-    renderStock();
-    updateDashboard();
-    document.getElementById('message').textContent = `✅ PC ajouté ! N° ${formatInventoryId(nextId)}`;
 }
 
 // ==========================================================
-// 5. GESTION DE LA MODALE UNIQUE DE MODIFICATION/SUPPRESSION
+// 5. LOGIQUE STOCK.HTML (ATELIER) & AJOUT
 // ==========================================================
 
-function closeEditModal() {
-    document.getElementById('editModal').style.display = 'none';
-    currentPcId = null;
-    currentPcFirestoreId = null;
-    safeGetEl('editModalMessage').textContent = '';
-}
-
-async function openEditModal(id, isSelling = false) {
-    currentPcId = id;
-    safeGetEl('editModalMessage').textContent = '';
-
-    try {
-        const snapshot = await db.collection(STOCK_COLLECTION).where('id_ordinateur', '==', id).get();
-        if (snapshot.empty) { showMessage("❌ Article introuvable", 3500); return; }
+// GESTION DU FORMULAIRE D'AJOUT (dans stock.html)
+if (el('addPcForm')) {
+    el('addPcForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const stock = await getStock();
+        const maxId = stock.reduce((max, p) => Math.max(max, p.id_ordinateur || 0), 0);
         
-        const pcDoc = snapshot.docs[0];
-        const pc = { ...pcDoc.data(), firestore_id: pcDoc.id };
-        currentPcFirestoreId = pc.firestore_id;
-
-        // Mise à jour de l'affichage de la modale
-        document.getElementById('modalEditPcInfo').textContent = `${pc.nom_pc} (N° ${formatInventoryId(pc.id_ordinateur)})`;
-        document.getElementById('editPrixAchat').value = pc.prix_achat ? pc.prix_achat.toFixed(2) : '0.00';
-        document.getElementById('editPrixReventeEstime').value = pc.prix_revente_estime ? pc.prix_revente_estime.toFixed(2) : '0.00';
-
-        const statusSection = safeGetEl('statusSection');
-        const finalPriceInput = safeGetEl('editFinalSalePrice');
-        const currentStatusEl = safeGetEl('currentStatus');
-
-        if (pc.statut === 'Vendu' || isSelling) {
-            statusSection.style.display = 'block';
-            currentStatusEl.textContent = pc.statut;
-
-            if (pc.statut === 'Vendu') {
-                finalPriceInput.value = pc.prix_vente_final ? pc.prix_vente_final.toFixed(2) : pc.prix_revente_estime.toFixed(2);
-                safeGetEl('cancelSaleButton').style.display = 'block';
-                safeGetEl('updateSalePriceButton').textContent = 'Modifier le Prix de Vente';
-            } else { // Si on vient du bouton Vendre
-                finalPriceInput.value = pc.prix_revente_estime ? pc.prix_revente_estime.toFixed(2) : '0.00';
-                safeGetEl('cancelSaleButton').style.display = 'none';
-                safeGetEl('updateSalePriceButton').textContent = 'Enregistrer la Vente';
-            }
-        } else {
-            statusSection.style.display = 'none';
-        }
-
-        document.getElementById('editModal').style.display = 'block';
-        document.getElementById('editPrixAchat').focus();
-
-    } catch (err) {
-        console.error("Erreur ouverture modale d'édition:", err);
-        showMessage("Erreur lors de l'ouverture de la modale (voir console)");
-    }
-}
-
-
-async function processUpdate() {
-    if (currentPcFirestoreId === null) return;
-    if (isProcessing) return;
-    isProcessing = true;
-
-    const modalMsg = safeGetEl('editModalMessage');
-    modalMsg.textContent = '';
-    
-    // Désactiver tous les boutons de la modale pour éviter les doubles clics
-    document.querySelectorAll('#editModal button').forEach(btn => btn.disabled = true);
-
-
-    try {
-        const newPrixAchat = parseFloat(safeGetEl('editPrixAchat').value);
-        const newPrixReventeEstime = parseFloat(safeGetEl('editPrixReventeEstime').value);
-
-        if (isNaN(newPrixAchat) || newPrixAchat <= 0 || isNaN(newPrixReventeEstime) || newPrixReventeEstime <= 0) {
-            modalMsg.textContent = "❌ Prix(s) d'achat ou d'estimation invalide(s)."; 
-            return; 
-        }
-
-        const updateData = {
-            prix_achat: newPrixAchat,
-            prix_revente_estime: newPrixReventeEstime,
+        const newPc = {
+            id_ordinateur: maxId + 1,
+            nom_pc: el('nomPc').value.trim(),
+            caracteristiques: el('caracteristiques').value.trim(),
+            prix_achat: parseFloat(el('prixAchat').value),
+            prix_revente_estime: parseFloat(el('prixRevente').value),
+            statut: 'En Préparation',
+            pieces: [],
+            problemes: ''
         };
 
-        // Si la section vente est visible, vérifier et mettre à jour le prix final (même s'il est déjà vendu)
-        if (safeGetEl('statusSection').style.display === 'block') {
-            const finalPrice = parseFloat(safeGetEl('editFinalSalePrice').value);
-            
-            if (safeGetEl('updateSalePriceButton').textContent === 'Enregistrer la Vente') {
-                // Cas : PC en Stock -> Vendu
-                if (isNaN(finalPrice) || finalPrice <= 0) { modalMsg.textContent = "❌ Prix de vente final invalide."; return; }
-                updateData.statut = 'Vendu';
-                updateData.prix_vente_final = finalPrice;
-                updateData.date_vente = firebase.firestore.FieldValue.serverTimestamp();
-            } else if (safeGetEl('updateSalePriceButton').textContent === 'Modifier le Prix de Vente') {
-                // Cas : PC Vendu -> Modification du prix final
-                 if (isNaN(finalPrice) || finalPrice <= 0) { modalMsg.textContent = "❌ Prix de vente final invalide."; return; }
-                 updateData.prix_vente_final = finalPrice;
-            }
-        }
+        await db.collection(STOCK_COLLECTION).add(newPc);
+        el('addPcForm').reset();
+        showMessage("✅ PC ajouté à l'atelier !");
         
-        await db.collection(STOCK_COLLECTION).doc(currentPcFirestoreId).update(updateData);
-
-        _stockCache.ts = 0;
-        modalMsg.style.display = 'block';
-        modalMsg.textContent = `✅ Article mis à jour !`;
-        await renderStock();
-        await updateDashboard();
-        setTimeout(closeEditModal, 900);
-        showMessage(`✅ PC N°${formatInventoryId(currentPcId)} mis à jour.`, 3500);
-
-    } catch (err) {
-        console.error("Erreur lors de la modification:", err);
-        modalMsg.textContent = "Erreur lors de l'enregistrement (voir console)";
-    } finally {
-        isProcessing = false;
-        // Réactiver les boutons
-        document.querySelectorAll('#editModal button').forEach(btn => btn.disabled = false);
-        
-    }
-}
-
-async function cancelSale() {
-    if (currentPcFirestoreId === null) return;
-    if (!confirm(`Êtes-vous sûr de vouloir annuler la vente du PC N°${formatInventoryId(currentPcId)} ? Il sera remis 'En Stock'.`)) {
-        return;
-    }
-    
-    if (isProcessing) return;
-    isProcessing = true;
-
-    try {
-        const docRef = db.collection(STOCK_COLLECTION).doc(currentPcFirestoreId);
-
-        await docRef.update({
-            statut: 'En Stock',
-            prix_vente_final: firebase.firestore.FieldValue.delete(),
-            date_vente: firebase.firestore.FieldValue.delete()
-        });
-
-        _stockCache.ts = 0;
-        showMessage(`✅ Vente du PC N°${formatInventoryId(currentPcId)} annulée.`, 3500);
-        closeEditModal();
-        await renderStock();
-        await updateDashboard();
-
-    } catch (err) {
-        console.error("Erreur annulation vente:", err);
-        showMessage("Erreur lors de l'annulation de la vente (voir console)", 3500);
-    } finally {
-        isProcessing = false;
-    }
-}
-
-async function confirmDeletePc() {
-    if (currentPcFirestoreId === null) return;
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer définitivement le PC N°${formatInventoryId(currentPcId)} ? Cette action est irréversible.`)) {
-        return;
-    }
-    
-    if (isProcessing) return;
-    isProcessing = true;
-
-    try {
-        await db.collection(STOCK_COLLECTION).doc(currentPcFirestoreId).delete();
-        _stockCache.ts = 0;
-        closeEditModal();
-        await renderStock();
-        await updateDashboard();
-        showMessage(`✅ Article N° ${formatInventoryId(currentPcId)} supprimé.`, 3500);
-    } catch (err) {
-        console.error("Erreur suppression:", err);
-        showMessage("Erreur suppression (voir console)", 3500);
-    } finally {
-        isProcessing = false;
-    }
-}
-
-
-// ==========================================================
-// 8. FILTRAGE ET RENDU
-// ==========================================================
-async function filterStock() {
-    const term = safeGetEl('searchInput').value.toLowerCase().trim();
-    const fullStock = await getStock();
-    if (!term) { renderStock(fullStock); return; }
-
-    const filtered = fullStock.filter(pc => {
-        const idFormat = formatInventoryId(pc.id_ordinateur).toLowerCase();
-        return (pc.nom_pc || '').toLowerCase().includes(term) ||
-            (pc.caracteristiques || '').toLowerCase().includes(term) ||
-            idFormat.includes(term);
+        if (el('stockDetailBody')) renderRepairs();
     });
-    renderStock(filtered);
 }
 
-async function renderStock(data = null) {
-    if (!data) data = await getStock();
-    const tbody = document.getElementById('inventaireBody');
-    if (!tbody) return;
+async function renderRepairs() {
+    if (!el('stockDetailBody')) return;
     
+    const stock = await getStock();
+    const tbody = el('stockDetailBody');
     tbody.innerHTML = '';
-    if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="7">Aucun ordinateur trouvé.</td></tr>'; return; }
 
-    data.forEach(pc => {
-        const statutClass = pc.statut.replace(/\s/g, '');
-        const prixAchat = Number(pc.prix_achat) || 0;
-        const prixReventeEstime = Number(pc.prix_revente_estime) || 0;
+    const repairs = stock.filter(pc => pc.statut === 'En Préparation');
 
-        let margeText = 'N/A', margeClass = 'marge-nulle';
-        
-        if (pc.statut === 'Vendu' && pc.prix_vente_final) {
-            const marge = pc.prix_vente_final - prixAchat;
-            margeText = formatEuro(marge).replace('€', '');
-            margeClass = marge > 0 ? 'marge-positive' : marge < 0 ? 'marge-negative' : 'marge-nulle';
-        } else if (pc.statut === 'En Stock') {
-            const margePot = prixReventeEstime - prixAchat;
-            margeText = `${formatEuro(margePot).replace('€', '')} (Est.)`;
-            margeClass = 'marge-estimee';
-        }
+    if (repairs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">Aucun PC en atelier. Utilisez le formulaire ci-dessus.</td></tr>';
+        return;
+    }
 
-        // Construction des boutons d'action SIMPLIFIÉE
-        let actionButtons;
-        if (pc.statut === 'En Stock') {
-             actionButtons = `
-                <button class="action-button btn-vendre" onclick="openEditModal(${pc.id_ordinateur}, true)">Vendre</button>
-                <button class="action-button btn-modifier-suivi" onclick="openEditModal(${pc.id_ordinateur}, false)">Modifier/Infos</button>
-            `;
-        } else { // Vendu
-            actionButtons = `
-                <button class="action-button btn-modifier-suivi" onclick="openEditModal(${pc.id_ordinateur}, false)">Modifier/Infos</button>
-            `;
-        }
-        
+    repairs.forEach(pc => {
+        const pieces = pc.pieces || [];
+        const coutPieces = pieces.reduce((acc, p) => acc + (Number(p.prix) || 0), 0);
+        const total = (Number(pc.prix_achat)||0) + coutPieces;
 
-        const row = tbody.insertRow();
-        row.innerHTML = `
-            <td>${formatInventoryId(pc.id_ordinateur)}</td>
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${formatId(pc.id_ordinateur)}</td>
             <td><strong>${pc.nom_pc}</strong></td>
-            <td>${formatEuro(prixAchat)}</td>
-            <td>${formatEuro(prixReventeEstime)}</td>
-            <td class="${margeClass}">${margeText}</td>
-            <td class="statut-${statutClass}">${pc.statut}</td>
+            <td style="color: #666; font-style: italic;">${pc.problemes || 'R.A.S.'}</td>
+            <td>${formatEuro(coutPieces)} <small>(${pieces.length} pcs)</small></td>
+            <td><strong>${formatEuro(total)}</strong></td>
             <td>
-                <div class="action-buttons-wrapper">${actionButtons}</div>
+                <div class="action-buttons-wrapper">
+                    <button class="action-button btn-vendre" onclick="moveToSale('${pc.firestoreId}')">Mettre en Vente</button>
+                    <button class="action-button btn-modifier-suivi" onclick="openSuiviModal(${pc.id_ordinateur})">🛠️ Pièces</button>
+                    <button class="action-button btn-secondary" onclick="openEditModal(${pc.id_ordinateur})">Infos</button>
+                </div>
             </td>
         `;
+        tbody.appendChild(tr);
     });
 }
 
+async function moveToSale(firestoreId) {
+    if(!confirm("PC réparé et prêt à la vente ?\nIl sera transféré vers la page 'Boutique & Ventes'.")) return;
+    try {
+        await db.collection(STOCK_COLLECTION).doc(firestoreId).update({ statut: 'En Vente' });
+        renderRepairs(); 
+        showMessage("✅ Transféré en boutique !");
+    } catch(e) { console.error(e); alert("Erreur"); }
+}
+
 // ==========================================================
-// 9. INITIALISATION
+// 6. MODALES & SUIVI
+// ==========================================================
+function closeAllModals() {
+    document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+    currentPcData = null;
+    currentPcId = null;
+}
+
+// ... openSaleModal, openEditModal (unchanged) ...
+async function openSaleModal(id) {
+    currentPcData = await getPcById(id);
+    if (!currentPcData) return;
+    el('saleModalPcName').textContent = `${currentPcData.nom_pc} (${formatId(id)})`;
+    el('finalSalePrice').value = currentPcData.prix_revente_estime || '';
+    el('saleModal').style.display = 'block';
+    el('finalSalePrice').focus();
+    el('confirmSaleBtn').onclick = async () => {
+        const price = parseFloat(el('finalSalePrice').value);
+        if (!price || price < 0) return alert("Prix invalide");
+        await db.collection(STOCK_COLLECTION).doc(currentPcData.firestoreId).update({
+            statut: 'Vendu', prix_vente_final: price, date_vente: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        closeAllModals(); renderDashboard();
+    };
+}
+
+async function openEditModal(id) {
+    currentPcData = await getPcById(id);
+    if (!currentPcData) return;
+    el('editModalPcName').textContent = formatId(id);
+    el('editNomPc').value = currentPcData.nom_pc;
+    el('editSpecs').value = currentPcData.caracteristiques;
+    el('editPrixAchat').value = currentPcData.prix_achat;
+    el('editPrixEstime').value = currentPcData.prix_revente_estime;
+    const isSold = currentPcData.statut === 'Vendu';
+    el('editSaleSection').style.display = isSold ? 'block' : 'none';
+    if(isSold) el('editPrixVenteFinal').value = currentPcData.prix_vente_final;
+    el('editModal').style.display = 'block';
+
+    el('saveEditBtn').onclick = async () => {
+        const updates = {
+            nom_pc: el('editNomPc').value, caracteristiques: el('editSpecs').value,
+            prix_achat: parseFloat(el('editPrixAchat').value), prix_revente_estime: parseFloat(el('editPrixEstime').value)
+        };
+        if(isSold) updates.prix_vente_final = parseFloat(el('editPrixVenteFinal').value);
+        await db.collection(STOCK_COLLECTION).doc(currentPcData.firestoreId).update(updates);
+        closeAllModals(); 
+        if(el('inventaireBody')) renderDashboard(); 
+        if(el('stockDetailBody')) renderRepairs();
+    };
+
+    el('cancelSaleBtn').onclick = async () => {
+        if(!confirm("Remettre en vente ?")) return;
+        await db.collection(STOCK_COLLECTION).doc(currentPcData.firestoreId).update({
+            statut: 'En Vente', prix_vente_final: firebase.firestore.FieldValue.delete(), date_vente: firebase.firestore.FieldValue.delete()
+        });
+        closeAllModals(); renderDashboard();
+    };
+
+    el('deletePcBtn').onclick = async () => {
+        if(!confirm("SUPPRIMER ?")) return;
+        await db.collection(STOCK_COLLECTION).doc(currentPcData.firestoreId).delete();
+        closeAllModals(); 
+        if(el('inventaireBody')) renderDashboard(); 
+        if(el('stockDetailBody')) renderRepairs();
+    };
+}
+
+async function openSuiviModal(id) {
+    currentPcData = await getPcById(id);
+    if (!currentPcData) return;
+    el('suiviPcName').textContent = currentPcData.nom_pc;
+    el('suiviProblemes').value = currentPcData.problemes || '';
+    // Initialise les nouveaux champs si non présents (compatibilité)
+    tempPiecesList = currentPcData.pieces ? currentPcData.pieces.map(p => ({
+        ...p,
+        ordered: p.ordered !== undefined ? p.ordered : false,
+        received: p.received !== undefined ? p.received : false
+    })) : [];
+    renderPiecesList();
+    el('suiviModal').style.display = 'block';
+}
+
+/**
+ * Fonctions de gestion du statut des pièces
+ */
+function togglePieceOrdered(index) {
+    const piece = tempPiecesList[index];
+    piece.ordered = !piece.ordered;
+    // Si on annule la commande, on annule aussi la réception
+    if (!piece.ordered) {
+        piece.received = false;
+    }
+    renderPiecesList();
+}
+
+function togglePieceReceived(index) {
+    const piece = tempPiecesList[index];
+    
+    // Si la pièce n'est pas commandée, on ne peut pas la recevoir (sauf pour annuler la réception)
+    if (!piece.ordered && !piece.received) return alert("Veuillez d'abord marquer la pièce comme commandée.");
+
+    piece.received = !piece.received;
+    
+    // Si la pièce est marquée comme reçue, elle doit être commandée
+    if (piece.received && !piece.ordered) {
+        piece.ordered = true;
+    }
+
+    renderPiecesList();
+}
+
+
+function renderPiecesList() {
+    const container = el('piecesListContainer');
+    container.innerHTML = '';
+    let total = 0;
+    if (tempPiecesList.length === 0) container.innerHTML = '<p style="text-align:center; color:#999">Aucune pièce.</p>';
+    else {
+        tempPiecesList.forEach((piece, index) => {
+            total += Number(piece.prix);
+            
+            const isOrdered = piece.ordered;
+            const isReceived = piece.received;
+
+            const orderedText = isOrdered ? 'Annuler Cde' : 'Commander';
+            const orderedClass = isOrdered ? 'btn-annuler' : 'btn-primary';
+            
+            const receivedText = isReceived ? 'Annuler Réception' : 'Reçu';
+            const receivedClass = isReceived ? 'btn-warning' : 'btn-success';
+            const receivedDisabled = !isOrdered && !isReceived; // On ne peut pas recevoir si non commandé et non reçu
+
+            const statusText = isReceived ? '✅ Reçu' : (isOrdered ? '⏳ Commandé' : '❌ Non Cde');
+            
+            const div = document.createElement('div');
+            div.className = 'piece-item';
+            div.innerHTML = `
+                <span>${piece.nom}</span>
+                <div class="piece-actions">
+                    <span class="piece-status">${statusText}</span>
+                    <strong>${formatEuro(piece.prix)}</strong>
+                    <button class="btn-small ${orderedClass}" onclick="togglePieceOrdered(${index})">${orderedText}</button>
+                    <button class="btn-small ${receivedClass}" ${receivedDisabled ? 'disabled' : ''} onclick="togglePieceReceived(${index})">${receivedText}</button>
+                    <button class="btn-small btn-supprimer" onclick="removePiece(${index})">X</button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+    el('totalPiecesCost').textContent = formatEuro(total);
+}
+
+function addPieceToUI() {
+    const nom = el('newPieceName').value.trim();
+    const prix = parseFloat(el('newPiecePrice').value);
+    if (!nom || isNaN(prix) || prix <= 0) return alert("Nom ou prix invalide.");
+    
+    // Ajout des nouveaux champs de statut
+    tempPiecesList.push({ nom, prix, ordered: false, received: false }); 
+    
+    el('newPieceName').value = ''; el('newPiecePrice').value = '';
+    renderPiecesList();
+}
+
+function removePiece(index) {
+    tempPiecesList.splice(index, 1);
+    renderPiecesList();
+}
+
+async function saveSuiviData() {
+    if (!currentPcData) return;
+    await db.collection(STOCK_COLLECTION).doc(currentPcData.firestoreId).update({
+        problemes: el('suiviProblemes').value.trim(), pieces: tempPiecesList
+    });
+    closeAllModals(); renderRepairs(); showMessage("✅ Suivi mis à jour");
+}
+
+function filterStock() {
+    const term = el('searchInput').value.toLowerCase();
+    document.querySelectorAll('#inventaireBody tr').forEach(r => r.style.display = r.innerText.toLowerCase().includes(term) ? '' : 'none');
+}
+function filterStockDetail() {
+    const term = el('stockSearchInput').value.toLowerCase();
+    document.querySelectorAll('#stockDetailBody tr').forEach(r => r.style.display = r.innerText.toLowerCase().includes(term) ? '' : 'none');
+}
+
+// ==========================================================
+// 7. INIT & EXPOSITION
 // ==========================================================
 document.addEventListener('DOMContentLoaded', () => {
-    // S'assurer que nous sommes sur la page index.html avant de tenter de rendre le stock principal
-    if (document.getElementById('inventaireBody')) {
-        renderStock();
-        updateDashboard();
-        if (document.getElementById('addPcForm')) document.getElementById('addPcForm').addEventListener('submit', addPc);
-        if (document.getElementById('searchInput')) document.getElementById('searchInput').addEventListener('input', debounce(filterStock, 250));
-        
-        // --- NOUVELLES LIAISONS POUR editModal ---
-        if (document.getElementById('updateCostButton')) document.getElementById('updateCostButton').addEventListener('click', processUpdate);
-        if (document.getElementById('updateSalePriceButton')) document.getElementById('updateSalePriceButton').addEventListener('click', processUpdate);
-        if (document.getElementById('cancelSaleButton')) document.getElementById('cancelSaleButton').addEventListener('click', cancelSale);
-        if (document.getElementById('confirmDeletePcButton')) document.getElementById('confirmDeletePcButton').addEventListener('click', confirmDeletePc);
-    }
-    
-    // Logique pour la modale unique
-    const editModal = document.getElementById('editModal');
-
-    window.addEventListener('click', e => {
-        if (e.target === editModal) closeEditModal();
-    });
-
-    window.addEventListener('keydown', e => {
-        if (e.key === 'Escape') {
-            if (editModal && editModal.style.display === 'block') closeEditModal();
-        }
-    });
-
-    document.querySelectorAll('.close-button').forEach(btn => {
-        btn.addEventListener('click', () => {
-            closeEditModal(); 
-        });
-    });
+    if (el('inventaireBody')) renderDashboard();
+    if (el('stockDetailBody')) renderRepairs();
+    window.onclick = (e) => { if (e.target.classList.contains('modal')) closeAllModals(); };
 });
 
-// --- Exposer fonctions au global ---
+window.openSaleModal = openSaleModal;
 window.openEditModal = openEditModal;
-window.closeEditModal = closeEditModal;
+window.openSuiviModal = openSuiviModal;
+window.closeAllModals = closeAllModals;
+window.addPieceToUI = addPieceToUI; // Renommée pour correspondre à addPiece (dans stock.html)
+window.removePiece = removePiece;
+window.saveSuiviData = saveSuiviData;
 window.filterStock = filterStock;
-// L'ancienne fonction cancelSale est maintenant interne à la modale
-// La nouvelle structure simplifie l'exposition globale.
+window.filterStockDetail = filterStockDetail;
+window.moveToSale = moveToSale;
+window.togglePieceOrdered = togglePieceOrdered; // NOUVEAU
+window.togglePieceReceived = togglePieceReceived; // NOUVEAU

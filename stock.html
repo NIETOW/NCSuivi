@@ -1,83 +1,108 @@
 <!DOCTYPE html>
 <html lang="fr">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
-    <title>NCSUIVI - Inventaire et Suivi des PCs</title>
+    <title>NCSuivi - Atelier</title>
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
     <header>
-        <div class="logo">NCSUIVI</div>
+        <div class="logo">NCSuivi</div>
         <nav>
-            <a href="index.html">Rapport</a>
-            <a href="stock.html">Inventaire</a>
+            <a href="index.html">Rapport et Ventes</a>
+            <a href="stock.html" class="active">Atelier</a>
         </nav>
     </header>
 
     <div class="container">
-        <h1>Suivi et Réparation des PCs en Stock</h1>
-
-        <p class="feedback-message" id="detailMessage"></p>
+        <h1>Atelier</h1>
+        <p class="subtitle">Ajoutez les nouveaux achats ici, réparez-les, puis mettez-les en vente</p>
         
-        <input type="text" id="stockSearchInput" placeholder="Rechercher par N° Inventaire ou Nom..." onkeyup="filterStockDetail()">
+        <div class="list-header">
+        <h2>Nouvelle Acquisition</h2>
+        </div>
+        <div class="form-section">
+            <form id="addPcForm" class="input-grid">
+                <input type="text" id="nomPc" placeholder="Nom du PC (Ex: Dell XPS 13)" required>
+                <input type="text" id="caracteristiques" placeholder="Specs (i7, 16GB, 512GB...)" required>
+                <input type="number" id="prixAchat" placeholder="Prix d'Achat (€)" min="0" step="0.01" required>
+                <input type="number" id="prixRevente" placeholder="Est. Revente (€)" min="0" step="0.01" required>
+                <button type="submit" class="full-width-button">Ajouter au Stock Atelier</button>
+            </form>
+            <p id="message" class="feedback-message"></p>
+        </div>
+
+        <hr>
+
+        <div class="list-header">
+            <h2>En cours de préparation</h2>
+            <input type="text" id="stockSearchInput" placeholder="Rechercher un PC..." onkeyup="filterStockDetail()">
+        </div>
         
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
-                        <th>N° Inventaire</th>
+                        <th>Réf</th>
                         <th>Nom du PC</th>
-                        <th>Statut Actuel</th>
-                        <th>Problème(s) Identifié(s)</th>
+                        <th>Problèmes / Notes</th>
                         <th>Coût Pièces</th>
-                        <th>Statut Pièces</th>
-                        <th>Coût Total Actuel</th>
-                        <th>Actions</th>
+                        <th>Coût Total</th>
+                        <th style="min-width: 250px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="stockDetailBody">
                     </tbody>
             </table>
         </div>
-
     </div>
 
     <div id="suiviModal" class="modal">
         <div class="modal-content">
-            <span class="close-button" onclick="closeSuiviModal()">&times;</span>
-            <h2>Suivi de Réparation pour <span id="suiviPcName"></span></h2>
-            <p id="suiviPcCarac" style="font-size: 0.9em; color: #6c757d;"></p>
-            
-            <hr>
-            
-            <h3>Problème et Caractéristiques Précises</h3>
-            <textarea id="suiviProblemes" placeholder="Décrivez le problème et notez les caractéristiques internes précises (CPU, RAM, état initial...)"></textarea>
-
-            <h3 style="margin-top: 20px;">Gestion des Pièces (Commandes)</h3>
-            
+            <span class="close-button" onclick="closeAllModals()">&times;</span>
+            <h2>Fiche Atelier : <span id="suiviPcName"></span></h2>
+            <div class="modal-input-group">
+                <label>Notes & Problèmes à résoudre</label>
+                <textarea id="suiviProblemes" rows="3" placeholder="Ex: Écran fissuré, batterie HS..."></textarea>
+            </div>
+            <h3>Pièces Détachées</h3>
             <div class="input-group-piece">
-                <input type="text" id="pieceNom" placeholder="Nom de la pièce (Ex: SSD 512GB)">
-                <input type="number" id="piecePrix" placeholder="Prix (€)" min="0.01" step="0.01">
-                <button class="action-button btn-vendre" onclick="addPiece()">Ajouter</button>
+                <input type="text" id="newPieceName" placeholder="Nom pièce (ex: SSD)">
+                <input type="number" id="newPiecePrice" placeholder="Prix (€)" step="0.01">
+                <button class="action-button btn-vendre" onclick="addPieceToUI()">Ajouter</button>
             </div>
-
-            <div class="pieces-list" id="piecesList">
-                <p style="text-align: center; color: #999;">Ajouter des pièces ci-dessus.</p>
+            <div class="pieces-list" id="piecesListContainer"></div>
+            <div style="text-align: right; margin-top: 10px; font-weight: bold;">
+                Total Pièces: <span id="totalPiecesCost">0.00 €</span>
             </div>
-            
             <hr>
-            
-            <button class="full-width-button" onclick="saveSuivi()">Enregistrer le Suivi</button>
-            <button class="full-width-button btn-annuler" onclick="closeSuiviModal()">Annuler</button>
+            <button class="full-width-button btn-primary" onclick="saveSuiviData()">Enregistrer la Fiche</button>
         </div>
     </div>
+    
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeAllModals()">&times;</span>
+            <h2>Modifier Infos</h2>
+            <p id="editModalPcName" class="modal-subtitle"></p>
+            <div class="modal-input-group"><label>Nom du PC</label><input type="text" id="editNomPc"></div>
+            <div class="modal-input-group"><label>Caractéristiques</label><input type="text" id="editSpecs"></div>
+            <div class="input-grid">
+                <div class="modal-input-group"><label>Prix Achat (€)</label><input type="number" id="editPrixAchat" step="0.01"></div>
+                <div class="modal-input-group"><label>Est. Revente (€)</label><input type="number" id="editPrixEstime" step="0.01"></div>
+            </div>
+            <div id="editSaleSection" style="display:none;"><input type="number" id="editPrixVenteFinal"></div>
+            <button id="saveEditBtn" class="full-width-button btn-primary">Enregistrer</button>
+            <button id="cancelSaleBtn" style="display:none;">x</button>
+            <hr>
+            <button id="deletePcBtn" class="full-width-button btn-supprimer">Supprimer</button>
+        </div>
+    </div>
+
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="script.js"></script>
 </body>
-
 </html>
