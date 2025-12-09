@@ -13,12 +13,8 @@
         <nav>
             <a href="index.html" class="active">Rapport et Ventes</a>
             <a href="stock.html">Atelier</a>
-            <div id="auth-status">
-            <button id="auth-button" class="btn-primary">
-                <i class="fas fa-sign-in-alt"></i> Connexion
-            </button>
+        </nav>
         </div>
-            </nav>
     </header>
 
     <div class="container">
@@ -112,40 +108,9 @@
     </div>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-
-    <div id="auth-modal" class="modal hidden">
-        <div class="modal-content">
-            <span class="close-button" onclick="closeAuthModal()">&times;</span>
-            <h2>Connexion / Inscription</h2>
-            <p id="auth-message" style="text-align: center; color: var(--color-danger);"></p>
-            
-            <form id="auth-form">
-                <div class="modal-input-group">
-                    <label for="auth-email">Email :</label>
-                    <input type="email" id="auth-email" required>
-                </div>
-                <div class="modal-input-group">
-                    <label for="auth-password">Mot de passe :</label>
-                    <input type="password" id="auth-password" required>
-                </div>
-                <button type="submit" class="full-width-button btn-primary" id="submit-auth-btn">Connexion</button>
-            </form>
-            
-            <button type="button" class="full-width-button btn-secondary" id="toggle-mode-btn" style="margin-top: 10px; margin-bottom: 15px;">
-                Pas de compte ? S'inscrire
-            </button>
-            
-            <hr style="border: 0; border-top: 1px dashed var(--color-border); margin: 20px 0;">
-
-            <button id="google-auth-btn" class="full-width-button btn-primary" style="background-color: #db4437;">
-                <i class="fab fa-google"></i> Connexion avec Google
-            </button>
-        </div>
-    </div>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
